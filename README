@@ -25,5 +25,5 @@ WRF models can output on a variety of projections.  At this time, this file will
 not unproject data for ground overlays.  So, if your WRF simulation occurs using 
 anything other than regular_ll, the georeferencing will be incorrect.  For the small
 domains (order 10 km) typically used in fire simulations, this error is typically
-quite small (less than the mesh resolution).  In the future, I plan to add an optional
-image reprojecting component based off of gdal python bindings.
+quite small (less than the mesh resolution).  In the future, I plan to add an 
+optional image reprojecting component based off of gdal python bindings.
