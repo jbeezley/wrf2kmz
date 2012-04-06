@@ -125,7 +125,7 @@ class BaseNetCDF2Raster(object):
                  minmaxglobal=None,maskedValues=None,maskedAbove=None, \
                  maskedBelow=None,static=False,displayName=None,
                  displayDescription=None,displayColorbar=True,
-                 displayAlpha=180):
+                 displayAlpha=180,name=None):
         '''
         Initialize a raster class object.
 
@@ -189,6 +189,7 @@ class BaseNetCDF2Raster(object):
         self.displayDescription=displayDescription
         self.displayColorbar=displayColorbar
         self.displayAlpha=displayAlpha
+        self._name=name
 
         if self._minmaxglobal:
             raise Exception("Global min-max computation not yet supported.")
@@ -368,7 +369,10 @@ class BaseNetCDF2Raster(object):
         '''
         Returns the name of the variable in the netCDF file.
         '''
-        return self._var._name
+        if self._name is None:
+            return self._var._name
+        else:
+            return self._name
 
     def getDescription(self):
         '''
@@ -671,6 +675,8 @@ class FirePerimeter(FireNetcdf2Raster):
     def __init__(self,*args,**kwargs):
         if len(args) == 1:
             args= args+(args[0].variables['LFN'],)
+        if not kwargs.has_key('name'):
+            kwargs['name']='fire perimeter'
         super(FirePerimeter,self).__init__(*args,**kwargs)
 
     def getName(self):
@@ -734,6 +740,8 @@ class FireRasterFile(object):
         default style.
         '''
         vclass,vargs=self._varClasses.get(varname,self._defaultClass)
+        if not vargs.has_key('name'):
+            vargs['name']=varname
         return vclass(self._file,self._file.variables[varname],**vargs)
     
     def firePerimeterClass(self):
@@ -1066,8 +1074,11 @@ def main(wrfout,vars):
     except Exception:
         pass
     for v in vars:
-        r=f.rasterClassFromVar(v)
-        n.groundOverlayFromRaster(r)
+        try:
+            r=f.rasterClassFromVar(v)
+            n.groundOverlayFromRaster(r)
+        except Exception:
+            print 'Error processing %s... skipping.' % v
 
     n.savekmz('wrf.kmz')
 
