@@ -1005,10 +1005,12 @@ class ncKML(Kml):
                 message('Skipping %i'%i)
                 continue
             
-            for p in poly:
+            j=0
+            for pl in poly:
                 # add new polygon element to the kml class object
-                p=f.newpolygon(name='%s_%05i' % (raster.getName()+'_contour',i))
-                p.outerboundaryis=p
+                print len(pl)
+                p=f.newpolygon(name='%s_%05i_%05i' % (raster.getName()+'_contour',i,j))
+                p.outerboundaryis=pl
                 p.polystyle=polystyle
                 p.linestyle=linestyle
                 p.tessellate=1
@@ -1016,6 +1018,7 @@ class ncKML(Kml):
                 p.timespan.begin=tref['start'].isoformat()
                 p.timespan.end=tref['end'].isoformat()
                 p.visibility=f.visibility
+                j=j+1
         return f
 
 def test(wrfout):
