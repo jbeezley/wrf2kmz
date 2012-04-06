@@ -1008,7 +1008,6 @@ class ncKML(Kml):
             j=0
             for pl in poly:
                 # add new polygon element to the kml class object
-                print len(pl)
                 p=f.newpolygon(name='%s_%05i_%05i' % (raster.getName()+'_contour',i,j))
                 p.outerboundaryis=pl
                 p.polystyle=polystyle
