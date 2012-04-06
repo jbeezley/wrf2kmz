@@ -564,7 +564,7 @@ class BaseNetCDF2Raster(object):
         poly=[]
         for i in p:
             tmp=[ (x,y) for x,y in i.to_polygons()[0] ]
-            poly.extend(tmp)
+            poly.append(tmp)
         return poly
 
 class WRFNetcdf2Raster(BaseNetCDF2Raster):
@@ -1004,17 +1004,18 @@ class ncKML(Kml):
             except MaskedArrayException:
                 message('Skipping %i'%i)
                 continue
-
-            # add new polygon element to the kml class object
-            p=f.newpolygon(name='%s_%05i' % (raster.getName()+'_contour',i))
-            p.outerboundaryis=poly
-            p.polystyle=polystyle
-            p.linestyle=linestyle
-            p.tessellate=1
-            p.timespan=TimeSpan()
-            p.timespan.begin=tref['start'].isoformat()
-            p.timespan.end=tref['end'].isoformat()
-            p.visibility=f.visibility
+            
+            for p in poly:
+                # add new polygon element to the kml class object
+                p=f.newpolygon(name='%s_%05i' % (raster.getName()+'_contour',i))
+                p.outerboundaryis=p
+                p.polystyle=polystyle
+                p.linestyle=linestyle
+                p.tessellate=1
+                p.timespan=TimeSpan()
+                p.timespan.begin=tref['start'].isoformat()
+                p.timespan.end=tref['end'].isoformat()
+                p.visibility=f.visibility
         return f
 
 def test(wrfout):
