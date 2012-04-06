@@ -1023,10 +1023,10 @@ def test(wrfout):
     '''
     if False:
         f=Dataset(wrfout,'r')
-        r1=FireNetcdf2Raster(f,f.variables['UF'])
-        r2=FireNetcdf2Raster(f,f.variables['FGRNHFX'])
-        r3=FireNetcdf2Raster(f,f.variables['ZSF'])
-        r4=FireNetcdf2Raster(f,f.variables['F_LINEINT2'])
+        r1=FireNetcdf2Raster(f,f.variables['UF'],name='UF')
+        r2=FireNetcdf2Raster(f,f.variables['FGRNHFX'],name='FGRNHFX')
+        r3=FireNetcdf2Raster(f,f.variables['ZSF'],name='ZSF')
+        r4=FireNetcdf2Raster(f,f.variables['F_LINEINT2'],name='F_LINEINT2')
     
         open('UF.png','w').write(r1.getRaster(1))
         open('FGRNHFX.png','w').write(r2.getRaster(5))
