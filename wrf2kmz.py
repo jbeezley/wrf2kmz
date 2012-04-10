@@ -48,6 +48,7 @@ Dependencies:
 '''
 
 # standard library imports
+import sys
 from dateutil import parser
 from cStringIO import StringIO
 
@@ -65,12 +66,23 @@ from netCDF4 import Dataset
 
 try:
     from simplekml import *
-except ImportError:
+except Exception:
     import sys
     print 'Could not find simplekml module.'
     print 'If you have setuptools installed, try `easy_install simplekml`.'
     print 'Otherwise install from http://code.google.com/p/simplekml/'
     sys.exit(1)
+
+try:
+    import reproject
+    from reproject import getEPSGProjectionDef,createGCP,vrtFromArray, \
+                          georeferenceImage,warpImage,readNC
+    have_reproject=True
+except Exception:
+    have_reproject=False
+    print >> sys.stderr, "WARNING: Could not import reprojection module."
+    print >> sys.stderr, "Ensure that gdalwarp and gdal_translate are in PATH."
+    print >> sys.stderr, "Continuing without reprojection support."
 
 # verbose=False to be quiet
 verbose=True
@@ -190,6 +202,7 @@ class BaseNetCDF2Raster(object):
         self.displayColorbar=displayColorbar
         self.displayAlpha=displayAlpha
         self._name=name
+        self._gref={}
 
         if self._minmaxglobal:
             raise Exception("Global min-max computation not yet supported.")
@@ -240,6 +253,36 @@ class BaseNetCDF2Raster(object):
         else:
             target=value
         return target
+    
+    def _getProj(self):
+        raise Exception("Unimplmented base class method")
+
+    def _getGCPs(self,istep=None,idx=None):
+        if not have_reproject:
+            return None
+        lon,lat=self.readCoordinates(istep,idx)
+        ny,nx=lon.shape
+        ny=ny-1
+        nx=nx-1
+        gcp=[createGCP(0,0,lon[0,0],lat[0,0]),
+             createGCP(0,ny,lon[ny,0],lat[ny,0]),
+             createGCP(nx,0,lon[0,nx],lat[0,nx]),
+             createGCP(nx,ny,lon[ny,nx],lat[ny,nx])]
+        return gcp
+    
+    def reprojectArray(self,a,istep=None,idx=None):
+        if not have_reproject:
+            return None
+        gcp=self._getGCPs(istep,idx)
+        proj=self._getProj()
+        b=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
+        vrtFromArray('tmp.vrt',np.flipud(b))
+        georeferenceImage('tmp.vrt',proj,gcp,'tmp1.vrt')
+        warpImage('tmp1.vrt','tmp.nc')
+        b,bds=readNC('tmp.nc')
+        #a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]=b
+        self._gref[istep]=bds
+        return b
 
     def _readArray(self,istep=None):
         '''
@@ -271,6 +314,8 @@ class BaseNetCDF2Raster(object):
         # raise an exception if all elements of the array are masked
         if a.mask.all() or (a.min() == a.max()):
             raise MaskedArrayException
+        
+        a=a.filled()
         return a
 
     def readCoordinates(self,istep=0,idx=None):
@@ -315,7 +360,7 @@ class BaseNetCDF2Raster(object):
         assert a.ndim == 2
 
         # get non-masked indices of a
-        idx=(a.mask == False).nonzero()
+        idx=(a == a).nonzero()
 
         if len(idx) == 1 or len(idx[0]) == 0:
             # if no indices are masked return full array indices
@@ -397,6 +442,8 @@ class BaseNetCDF2Raster(object):
         coordinates of the subarray computed from the variable mask rather than
         the full variable bounds.
         '''
+        if self._gref.has_key(istep):
+            return self._gref[istep]
         a=self._readArray(istep)
         idx=self._getRestriction(a)
         lon,lat=self.readCoordinates(istep,idx)
@@ -453,7 +500,7 @@ class BaseNetCDF2Raster(object):
         '''
         raise Exception('Unimplemented base class method')
 
-    def getRasterFromArray(self,a,hsize=3,dpi=300):
+    def getRasterFromArray(self,a,istep=None,hsize=3,dpi=300):
         '''
         Returns a string containing a png psuedocolor image of the array a.
 
@@ -466,8 +513,11 @@ class BaseNetCDF2Raster(object):
         # get subarray restriction from mask
         idx=self._getRestriction(a)
 
-        # restrict the array
-        a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
+        if have_reproject:
+            a=self.reprojectArray(a,istep,idx)
+        else: 
+            # restrict the array
+            a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
 
         # generate a matplotlib figure object
         fig=pylab.figure(figsize=(hsize,hsize*float(a.shape[0])/a.shape[1]))
@@ -496,7 +546,7 @@ class BaseNetCDF2Raster(object):
         Get a png image for the variable at istep.  See getRasterFromArray.
         '''
         a=self._readArray(istep)
-        return self.getRasterFromArray(a,**kwargs)
+        return self.getRasterFromArray(a,istep,**kwargs)
 
     def getColorbarFromMinMax(self,min,max,hsize=2,dpi=200):
         '''
@@ -583,6 +633,16 @@ class WRFNetcdf2Raster(BaseNetCDF2Raster):
         '''
         time=parser.parse(self._file.variables['Times'][istep,:].tostring().replace('_',' '))
         return time
+
+    def _getProj(self):
+        if not have_reproject:
+            return None
+        f=self._file
+        proj=getEPSGProjectionDef(f.MAP_PROJ,f.CEN_LAT,f.CEN_LON,
+                                  f.TRUELAT1,f.TRUELAT2,f.STAND_LON,
+                                  f.POLE_LAT,f.POLE_LON)
+        return proj
+
 
 class FireNetcdf2Raster(WRFNetcdf2Raster):
     '''
@@ -1077,10 +1137,13 @@ def main(wrfout,vars):
     except Exception:
         pass
     for v in vars:
+        r=f.rasterClassFromVar(v)
+        n.groundOverlayFromRaster(r)
         try:
             r=f.rasterClassFromVar(v)
             n.groundOverlayFromRaster(r)
-        except Exception:
+        except Exception as e:
+            print e
             print 'Error processing %s... skipping.' % v
 
     n.savekmz('wrf.kmz')
