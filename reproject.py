@@ -5,7 +5,7 @@ import subprocess as sp
 import numpy as np
 from netCDF4 import Dataset
 
-verbose=False
+verbose=True
 
 # set to the path where gdal binaries are located
 # ex: gdalPath='/usr/loca/bin'
@@ -33,13 +33,13 @@ _mercator='EPSG:9805'
 
 knownProjectionsProj4={
     'PROJ_LATLONG':None,
-    'PROJ_LC':'+proj=lcc +lat_1=%(truelat1)f +lat_2=%(truelat2)f +lat_0=%(truelat1)f +lon_0=%(std_lon)f',
+    'PROJ_LC':'+proj=lcc +lat_1=%(truelat1)f +lat_2=%(truelat2)f +lat_0=%(truelat1)f +lon_0=%(std_lon)f +R=6370000',
     'PROJ_PS':None,  #need to check encoding... '+proj=stere +lat_ts=%(truelat1)f +lat_0=%(truelat1)f +lon_0=%(std_lon)f -k_0=1.0 +x_0=0. +y_0=0.'
     'PROJ_MERC':None #proj.4 doesn't support lat of nat. origin/wrf only gives truelat...
                      #'+proj=merc +lat_ts=%(truelat1)f +lon_0=%(std_lon)f +x_0=0. +y_0=0.'
 }
 
-_unproj='+proj=longlat +datum=NAD83 +no_defs'
+_unproj='+proj=longlat +datum=WGS84 +nodefs'
 _gdal_translate='gdal_translate'
 _gdalwarp='gdalwarp'
 
@@ -135,7 +135,7 @@ def warpImage(img,out):
     if os.path.exists(out):
         os.remove(out)
     gw=getGDALProg(_gdalwarp)
-    args=[gw,'-of','netCDF','-t_srs','EPSG:4326',img,out]
+    args=[gw,'-of','netCDF','-t_srs',_unproj,img,out]
     message('running: %s' % (' '.join(args)))
     p=sp.Popen(args,shell=False,env=gdalEnv,stdout=sp.PIPE)
     p.communicate()
