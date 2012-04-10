@@ -73,25 +73,28 @@ except Exception:
     print 'Otherwise install from http://code.google.com/p/simplekml/'
     sys.exit(1)
 
-try:
-    import reproject
-    from reproject import getEPSGProjectionDef,createGCP,vrtFromArray, \
-                          georeferenceImage,warpImage,readNC
-    have_reproject=True
-except Exception:
-    have_reproject=False
-    print >> sys.stderr, "WARNING: Could not import reprojection module."
-    print >> sys.stderr, "Ensure that gdalwarp and gdal_translate are in PATH."
-    print >> sys.stderr, "Continuing without reprojection support."
-
 # verbose=False to be quiet
 verbose=True
+
+
 def message(s):
     '''
     Print a message to stdout if verbose is True.
     '''
     if verbose:
         print s
+
+try:
+    import reproject
+    from reproject import getEPSGProjectionDef,createGCP,vrtFromArray, \
+                          georeferenceImage,warpImage,readNC
+    have_reproject=True
+    message('Using reprojection support.')
+except Exception:
+    have_reproject=False
+    print >> sys.stderr, "WARNING: Could not import reprojection module."
+    print >> sys.stderr, "Ensure that gdalwarp and gdal_translate are in PATH."
+    print >> sys.stderr, "Continuing without reprojection support."
 
 class MaskedArrayException(Exception):
     '''
@@ -400,7 +403,7 @@ class BaseNetCDF2Raster(object):
             minmax=self._minmax
         else:
             a=self._readArray(istep)
-            minmax=(a.min(),a.max())
+            minmax=(a[a==a].min(),a[a==a].max())
         return minmax
 
     def getUnits(self):
@@ -524,7 +527,7 @@ class BaseNetCDF2Raster(object):
         ax=fig.add_axes([0,0,1,1])
 
         # get a color norm instance from the min/max of a
-        norm=self._norm(a.min(),a.max())
+        norm=self._norm(a[a==a].min(),a[a==a].max())
 
         # add image to the axis
         ax.imshow(np.flipud(a),cmap=self._cmap,norm=norm,interpolation='nearest')
@@ -1137,8 +1140,6 @@ def main(wrfout,vars):
     except Exception:
         pass
     for v in vars:
-        r=f.rasterClassFromVar(v)
-        n.groundOverlayFromRaster(r)
         try:
             r=f.rasterClassFromVar(v)
             n.groundOverlayFromRaster(r)

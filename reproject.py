@@ -5,6 +5,8 @@ import subprocess as sp
 import numpy as np
 from netCDF4 import Dataset
 
+verbose=False
+
 # set to the path where gdal binaries are located
 # ex: gdalPath='/usr/loca/bin'
 # None means they are in the PATH environment variable
@@ -50,6 +52,10 @@ _vrtFMT='''<VRTDataset rasterXSize="%(xsize)i" rasterYSize="%(ysize)i">
   </VRTRasterBand>
 </VRTDataset>
 '''
+
+def message(s):
+    if verbose:
+        print s
 
 def which(program):
     import os
@@ -118,8 +124,8 @@ def georeferenceImage(img,proj,gcps,out):
         args.append('%(lat)f' % g)
     args.append(img)
     args.append(out)
-    print 'running: %s' % (' '.join(args))
-    p=sp.Popen(args,shell=False,env=gdalEnv)
+    message('running: %s' % (' '.join(args)))
+    p=sp.Popen(args,shell=False,env=gdalEnv,stdout=sp.PIPE)
     p.communicate()
     if p.returncode != 0:
         print p.returncode
@@ -130,8 +136,8 @@ def warpImage(img,out):
         os.remove(out)
     gw=getGDALProg(_gdalwarp)
     args=[gw,'-of','netCDF','-t_srs','EPSG:4326',img,out]
-    print 'running: %s' % (' '.join(args))
-    p=sp.Popen(args,shell=False,env=gdalEnv)
+    message('running: %s' % (' '.join(args)))
+    p=sp.Popen(args,shell=False,env=gdalEnv,stdout=sp.PIPE)
     p.communicate()
     if p.returncode != 0:
         raise NoGDALSupport('Failed to execute %s' % _gdalwarp)
@@ -148,6 +154,7 @@ def unProjectImage(img,proj,gcps):
 
 def vrtFromArray(fname,a):
     assert a.ndim == 2
+    
     a=np.ascontiguousarray(a)
     
     bin=fname+'.bin'
