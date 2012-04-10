@@ -299,6 +299,16 @@ class BaseNetCDF2Raster(object):
         else:
             a=self._var[istep,...].squeeze()
 
+        a=self.applyMask(a)
+
+        # raise an exception if all elements of the array are masked
+        if a.mask.all() or (a.min() == a.max()):
+            raise MaskedArrayException
+        
+        a=a.filled()
+        return a
+
+    def applyMask(self,a):
         # convert to a masked array
         a=np.ma.MaskedArray(a,copy=False)
 
@@ -314,11 +324,6 @@ class BaseNetCDF2Raster(object):
         # fill masked values with NaN's to display as transparent in matplotlib
         a.fill_value=np.nan
 
-        # raise an exception if all elements of the array are masked
-        if a.mask.all() or (a.min() == a.max()):
-            raise MaskedArrayException
-        
-        a=a.filled()
         return a
 
     def readCoordinates(self,istep=0,idx=None):
@@ -518,6 +523,7 @@ class BaseNetCDF2Raster(object):
 
         if have_reproject:
             a=self.reprojectArray(a,istep,idx)
+            a=self.applyMask(a)
         else: 
             # restrict the array
             a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
