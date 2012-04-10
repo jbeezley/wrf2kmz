@@ -60,7 +60,10 @@ import matplotlib
 if __name__ == '__main__':
     matplotlib.use('Agg')
 
+import warnings
+warnings.simplefilter('ignore')
 from matplotlib import pylab
+from matplotlib.mlab import griddata
 import numpy as np
 from netCDF4 import Dataset
 
@@ -76,6 +79,14 @@ except Exception:
 # verbose=False to be quiet
 verbose=True
 
+def simpleReproject(lon,lat,a,interp='nn'):
+    west=lon.min()
+    east=lon.max()
+    south=lat.min()
+    north=lat.max()
+    xi=np.linspace(west,east,a.shape[1])
+    yi=np.linspace(south,north,a.shape[0])
+    return griddata(lon.ravel(),lat.ravel(),a.ravel(),xi,yi,interp=interp)
 
 def message(s):
     '''
@@ -84,17 +95,18 @@ def message(s):
     if verbose:
         print s
 
-try:
-    import reproject
-    from reproject import getEPSGProjectionDef,createGCP,vrtFromArray, \
-                          georeferenceImage,warpImage,readNC
-    have_reproject=True
-    message('Using reprojection support.')
-except Exception:
-    have_reproject=False
-    print >> sys.stderr, "WARNING: Could not import reprojection module."
-    print >> sys.stderr, "Ensure that gdalwarp and gdal_translate are in PATH."
-    print >> sys.stderr, "Continuing without reprojection support."
+have_reproject=False
+#try:
+#    import reproject
+#    from reproject import getEPSGProjectionDef,createGCP,vrtFromArray, \
+#                          georeferenceImage,warpImage,readNC
+#    have_reproject=True
+#    message('Using reprojection support.')
+#except Exception:
+#    have_reproject=False
+#    print >> sys.stderr, "WARNING: Could not import reprojection module."
+#    print >> sys.stderr, "Ensure that gdalwarp and gdal_translate are in PATH."
+#    print >> sys.stderr, "Continuing without reprojection support."
 
 class MaskedArrayException(Exception):
     '''
@@ -527,6 +539,8 @@ class BaseNetCDF2Raster(object):
         else: 
             # restrict the array
             a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
+            lon,lat=self.readCoordinates(istep,idx)
+            a=simpleReproject(lon,lat,a)
 
         # generate a matplotlib figure object
         fig=pylab.figure(figsize=(hsize,hsize*float(a.shape[0])/a.shape[1]))
