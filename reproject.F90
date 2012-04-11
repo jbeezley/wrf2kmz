@@ -11,6 +11,7 @@ integer,intent(out)::ierr
 
 integer::i,j,i0,j0,ic
 integer,dimension(4),parameter::ip=(/-1,0,0,-1/),jp=(/-1,-1,0,0/)
+logical,dimension(inx,iny)::m
 real,dimension(4)::xc,yc
 integer::inpolygon
 external::inpolygon
@@ -30,6 +31,7 @@ do j=2,iny
 enddo
 
 b=fill
+m=.false.
 do j=2,ny
     do i=2,nx
         if(lon(i,j).le.lon(i-1,j))then
@@ -46,6 +48,7 @@ do j=2,ny
             if(yi(j0).lt.lat(i-1,j-1).and.yi(j0).lt.lat(i,j-1)) goto 10
             if(yi(j0).gt.lat(i-1,j).and.yi(j0).gt.lat(i,j)) goto 20
             do i0=1,inx
+                if(m(i0,j0))goto 20
                 if(xi(i0).lt.lon(i-1,j-1).and.xi(i0).lt.lon(i-1,j)) goto 30
                 if(xi(i0).gt.lon(i,j-1).and.xi(i0).gt.lon(i,j)) goto 20
                 
@@ -55,6 +58,7 @@ do j=2,ny
                 !print*,i,j,i0,j0,ic
                 if(ic.gt.0) then 
                     b(i0,j0)=a(i+ip(ic),j+jp(ic))
+                    m(i0,j0)=.true.
                 endif
 
                 30 continue

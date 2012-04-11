@@ -47,6 +47,8 @@ Dependencies:
     netcdf4-python : http://code.google.com/p/netcdf4-python/
 '''
 
+use_matplotlib_reproject=False
+
 # standard library imports
 import sys
 from dateutil import parser
@@ -108,10 +110,27 @@ have_reproject=False
 #    print >> sys.stderr, "Ensure that gdalwarp and gdal_translate are in PATH."
 #    print >> sys.stderr, "Continuing without reprojection support."
 
+_p=os.path.dirname(__file__)
+if not os.path.exists(os.path.join(_p,'reproject.so')):
+    try:
+        from numpy.f2py import compile
+        compile(open(os.path.join(_p,'reproject.F90'),'r').read(),
+                modulename='reproject',verbose=0,source_fn='tmp.F90')
+        os.remove('tmp.F90')
+        if _p != '':
+            import shutil
+            shutil.move('reproject.so',_p)
+    except Exception as e:
+        print 'Could not compile reprojection module.'
+        
+
 try:
     import reproject
     have_reproject=True
 except ImportError:
+    have_reproject=False
+
+if use_matplotlib_reproject:
     have_reproject=False
 
 class MaskedArrayException(Exception):
@@ -540,7 +559,9 @@ class BaseNetCDF2Raster(object):
         idx=self._getRestriction(a)
 
         a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
-
+        
+        import datetime
+        d=datetime.datetime.now()
         if have_reproject:
             lon,lat=self.readCoordinates(istep,idx)
             xi=np.linspace(lon.min(),lon.max(),a.shape[1])
@@ -553,12 +574,9 @@ class BaseNetCDF2Raster(object):
             #a=self.reprojectArray(a,istep,idx)
             #a=self.applyMask(a)
         else: 
-            pass
-            # restrict the array
-            #a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
-            #lon,lat=self.readCoordinates(istep,idx)
-            #a=simpleReproject(lon,lat,a)
-
+            lon,lat=self.readCoordinates(istep,idx)
+            a=simpleReproject(lon,lat,a)
+        print (datetime.datetime.now()-d).total_seconds()
         # generate a matplotlib figure object
         fig=pylab.figure(figsize=(hsize,hsize*float(a.shape[0])/a.shape[1]))
         ax=fig.add_axes([0,0,1,1])
