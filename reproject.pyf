@@ -1,0 +1,24 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module reproject ! in 
+    interface  ! in :reproject
+        subroutine reprojectarray(nx,ny,inx,iny,lon,lat,a,xi,yi,fill,b,ierr) ! in :reproject:reproject.F90
+            integer, optional,intent(in),check(shape(lon,0)==nx),depend(lon) :: nx=shape(lon,0)
+            integer, optional,intent(in),check(shape(lon,1)==ny),depend(lon) :: ny=shape(lon,1)
+            integer, optional,intent(in),check(len(xi)>=inx),depend(xi) :: inx=len(xi)
+            integer, optional,intent(in),check(len(yi)>=iny),depend(yi) :: iny=len(yi)
+            real dimension(nx,ny),intent(in) :: lon
+            real dimension(nx,ny),intent(in),depend(nx,ny) :: lat
+            real dimension(nx,ny),intent(in),depend(nx,ny) :: a
+            real dimension(inx),intent(in) :: xi
+            real dimension(iny),intent(in) :: yi
+            real intent(in) :: fill
+            real dimension(inx,iny),intent(out),depend(inx,iny) :: b
+            integer intent(out) :: ierr
+        end subroutine reprojectarray
+    end interface 
+end python module reproject
+
+! This file was auto-generated with f2py (version:2).
+! See http://cens.ioc.ee/projects/f2py2e/

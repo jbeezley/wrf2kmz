@@ -97,8 +97,8 @@ def message(s):
 
 have_reproject=False
 #try:
-#    import reproject
-#    from reproject import getEPSGProjectionDef,createGCP,vrtFromArray, \
+#    import reprojectGDAL
+#    from reprojectGDAL import getEPSGProjectionDef,createGCP,vrtFromArray, \
 #                          georeferenceImage,warpImage,readNC
 #    have_reproject=True
 #    message('Using reprojection support.')
@@ -539,8 +539,8 @@ class BaseNetCDF2Raster(object):
         else: 
             # restrict the array
             a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
-            lon,lat=self.readCoordinates(istep,idx)
-            a=simpleReproject(lon,lat,a)
+            #lon,lat=self.readCoordinates(istep,idx)
+            #a=simpleReproject(lon,lat,a)
 
         # generate a matplotlib figure object
         fig=pylab.figure(figsize=(hsize,hsize*float(a.shape[0])/a.shape[1]))
