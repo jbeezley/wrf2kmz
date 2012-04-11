@@ -108,6 +108,12 @@ have_reproject=False
 #    print >> sys.stderr, "Ensure that gdalwarp and gdal_translate are in PATH."
 #    print >> sys.stderr, "Continuing without reprojection support."
 
+try:
+    import reproject
+    have_reproject=True
+except ImportError:
+    have_reproject=False
+
 class MaskedArrayException(Exception):
     '''
     An exception that is raised when a variable read contains only
@@ -533,12 +539,23 @@ class BaseNetCDF2Raster(object):
         # get subarray restriction from mask
         idx=self._getRestriction(a)
 
+        a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
+
         if have_reproject:
-            a=self.reprojectArray(a,istep,idx)
-            a=self.applyMask(a)
+            lon,lat=self.readCoordinates(istep,idx)
+            xi=lon[0,:]
+            yi=lat[:,0]
+            b,ierr=reproject.reprojectarray(lon.T,lat.T,a.T,xi,yi,np.nan)
+            if ierr == 0:
+                a=b.T
+            else:
+                print 'Problem reprojecting...'
+            #a=self.reprojectArray(a,istep,idx)
+            #a=self.applyMask(a)
         else: 
+            pass
             # restrict the array
-            a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
+            #a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
             #lon,lat=self.readCoordinates(istep,idx)
             #a=simpleReproject(lon,lat,a)
 
