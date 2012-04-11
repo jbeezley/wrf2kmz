@@ -543,8 +543,8 @@ class BaseNetCDF2Raster(object):
 
         if have_reproject:
             lon,lat=self.readCoordinates(istep,idx)
-            xi=lon[0,:]
-            yi=lat[:,0]
+            xi=np.linspace(lon.min(),lon.max(),a.shape[1])
+            yi=np.linspace(lat.min(),lat.max(),a.shape[0])
             b,ierr=reproject.reprojectarray(lon.T,lat.T,a.T,xi,yi,np.nan)
             if ierr == 0:
                 a=b.T
