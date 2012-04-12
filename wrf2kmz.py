@@ -365,7 +365,6 @@ class BaseNetCDF2Raster(object):
         Read data from the netCDF variable.  If istep is not None, then
         read a single time step.
         '''
-
         # read data
         if istep is None:
             a=self._var[:]
@@ -421,8 +420,8 @@ class BaseNetCDF2Raster(object):
 
         # if no index bounds given, then return the full arrays
         if idx is None:
-            idx=(0,lon.shape[0]-1,0,lon.shape[1])
-
+            idx=(0,lon.shape[0]-1,0,lon.shape[1]-1)
+        
         # restrict coordinate arrays from index bounds
         if istep is None:
             lon=lon[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
@@ -439,6 +438,9 @@ class BaseNetCDF2Raster(object):
         Assumes a is 2D.
         '''
         assert a.ndim == 2
+
+        #if (a != a).all():
+        #    raise MaskedArrayException
 
         # get non-masked indices of a
         idx=(a == a).nonzero()
@@ -513,7 +515,7 @@ class BaseNetCDF2Raster(object):
         Following WRF output standards, this is in the attribute coordinates
         containing a 2 element tuple (longitude,latitude).
         '''
-        return self._var.__dict__.get('coordinates',None)
+        return self._var.__dict__.get('coordinates',None).split(' ')
 
     def georeference(self,istep=None):
         '''
@@ -763,14 +765,17 @@ class FireNetcdf2Raster(WRFNetcdf2Raster):
         for fire grid variables.
         '''
         a=WRFNetcdf2Raster._readArray(self,istep)
-        return a[:-self.sry,:-self.srx]
+        if self._isfiregridvar(self._var):
+            return a[:-self.sry,:-self.srx]
+        else:
+            return a
 
     def readCoordinates(self,istep=0,idx=None):
         '''
         Same as base class readCoordinates, but ignores the extra space that is present
         for fire grid variables.
         '''
-        if idx is None:
+        if idx is None and self._isfiregridvar(self._var):
             c=self._var.shape
             idx=(0,c[1]-self.sry-1,0,c[2]-self.srx-1)
         return WRFNetcdf2Raster.readCoordinates(self,istep,idx)
@@ -781,9 +786,15 @@ class FireNetcdf2Raster(WRFNetcdf2Raster):
         instead of XLONG/XLAT because WRF fills in the attributes incorrectly.
         '''
         if not self._isfiregridvar(self._var):
-            return WRFNetcdf2Raster.getCoordinates()
+            return WRFNetcdf2Raster.getCoordinates(self)
         else:
             return ('FXLONG','FXLAT')
+
+    def _getTag(self):
+        if self._isfiregridvar(self._var):
+            return 'fire'
+        else:
+            return WRFNetcdf2Raster._getTag(self)
 
 class LogScaleRaster(FireNetcdf2Raster):
     '''
