@@ -48,6 +48,7 @@ Dependencies:
 '''
 
 use_matplotlib_reproject=False
+global_reproject=True
 
 # standard library imports
 import sys
@@ -80,6 +81,18 @@ except Exception:
 
 # verbose=False to be quiet
 verbose=True
+global _globalReprojectionIdx
+_globalReprojectionIdx={}
+
+def reprojectArray(tag,lon,lat,a,interp='nn'):
+    if have_reproject:
+        idx=globalReprojectIdx(tag,lon,lat)
+    if have_reproject and idx is not None:
+        #assert idx.shape == lon.shape+(2,)
+        b=reprojectArrayFromTag(tag,a)
+    else:
+        b=simpleReproject(lon,lat,a,interp)
+    return b
 
 def simpleReproject(lon,lat,a,interp='nn'):
     west=lon.min()
@@ -89,6 +102,7 @@ def simpleReproject(lon,lat,a,interp='nn'):
     xi=np.linspace(west,east,a.shape[1])
     yi=np.linspace(south,north,a.shape[0])
     return griddata(lon.ravel(),lat.ravel(),a.ravel(),xi,yi,interp=interp)
+
 
 def message(s):
     '''
@@ -132,6 +146,28 @@ except ImportError:
 
 if use_matplotlib_reproject:
     have_reproject=False
+
+def globalReprojectIdx(tag,lon,lat):
+    if not have_reproject:
+        return None
+    global _globalReprojectionIdx
+    if not _globalReprojectionIdx.has_key(tag):
+        xi=np.linspace(lon.min(),lon.max(),lon.shape[1])
+        yi=np.linspace(lat.min(),lat.max(),lat.shape[0])
+        idx,ierr=reproject.reprojectionidx(lon.T,lat.T,xi,yi)
+        if ierr != 0:
+            print 'Reprojection error for %s' % tag
+            idx=None
+        else:
+            idx=idx
+        _globalReprojectionIdx[tag]=idx
+    return _globalReprojectionIdx[tag]
+
+def reprojectArrayFromTag(tag,a):
+    global _globalReprojectionIdx
+    idx=_globalReprojectionIdx[tag]
+    assert idx is not None
+    return reproject.interparray(idx,a.T,np.nan).T
 
 class MaskedArrayException(Exception):
     '''
@@ -545,6 +581,9 @@ class BaseNetCDF2Raster(object):
         '''
         raise Exception('Unimplemented base class method')
 
+    def _getTag(self):
+        return 'default'
+    
     def getRasterFromArray(self,a,istep=None,hsize=3,dpi=300):
         '''
         Returns a string containing a png psuedocolor image of the array a.
@@ -555,28 +594,19 @@ class BaseNetCDF2Raster(object):
             dpi:    integer, dots per inch of the image
         '''
 
+        lon,lat=self.readCoordinates(istep)
+        a=reprojectArray(self._getTag(),lon,lat,a)
+        a=self.applyMask(a)
+        if (a!=a).all():
+            raise MaskedArrayException
+
         # get subarray restriction from mask
         idx=self._getRestriction(a)
 
         a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
+        lon=lon[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
+        lat=lat[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
         
-        import datetime
-        d=datetime.datetime.now()
-        if have_reproject:
-            lon,lat=self.readCoordinates(istep,idx)
-            xi=np.linspace(lon.min(),lon.max(),a.shape[1])
-            yi=np.linspace(lat.min(),lat.max(),a.shape[0])
-            b,ierr=reproject.reprojectarray(lon.T,lat.T,a.T,xi,yi,np.nan)
-            if ierr == 0:
-                a=b.T
-            else:
-                print 'Problem reprojecting...'
-            #a=self.reprojectArray(a,istep,idx)
-            #a=self.applyMask(a)
-        else: 
-            lon,lat=self.readCoordinates(istep,idx)
-            a=simpleReproject(lon,lat,a)
-        print (datetime.datetime.now()-d).total_seconds()
         # generate a matplotlib figure object
         fig=pylab.figure(figsize=(hsize,hsize*float(a.shape[0])/a.shape[1]))
         ax=fig.add_axes([0,0,1,1])
@@ -700,7 +730,6 @@ class WRFNetcdf2Raster(BaseNetCDF2Raster):
                                   f.TRUELAT1,f.TRUELAT2,f.STAND_LON,
                                   f.POLE_LAT,f.POLE_LON)
         return proj
-
 
 class FireNetcdf2Raster(WRFNetcdf2Raster):
     '''

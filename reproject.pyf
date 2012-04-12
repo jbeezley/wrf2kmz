@@ -3,6 +3,28 @@
 
 python module reproject ! in 
     interface  ! in :reproject
+        subroutine reprojectionidx(nx,ny,inx,iny,lon,lat,xi,yi,idx,ierr) ! in :reproject:reproject.F90
+            integer, optional,intent(in),check(shape(lon,0)==nx),depend(lon) :: nx=shape(lon,0)
+            integer, optional,intent(in),check(shape(lon,1)==ny),depend(lon) :: ny=shape(lon,1)
+            integer, optional,intent(in),check(len(xi)>=inx),depend(xi) :: inx=len(xi)
+            integer, optional,intent(in),check(len(yi)>=iny),depend(yi) :: iny=len(yi)
+            real dimension(nx,ny),intent(in) :: lon
+            real dimension(nx,ny),intent(in),depend(nx,ny) :: lat
+            real dimension(inx),intent(in) :: xi
+            real dimension(iny),intent(in) :: yi
+            integer dimension(2,inx,iny),intent(out),depend(inx,iny) :: idx
+            integer intent(out) :: ierr
+        end subroutine reprojectionidx
+        subroutine interparray(nx,ny,inx,iny,idx,a,fill,b) ! in :reproject:reproject.F90
+            integer, optional,intent(in),check(shape(a,0)==nx),depend(a) :: nx=shape(a,0)
+            integer, optional,intent(in),check(shape(a,1)==ny),depend(a) :: ny=shape(a,1)
+            integer, optional,intent(in),check(shape(idx,1)==inx),depend(idx) :: inx=shape(idx,1)
+            integer, optional,intent(in),check(shape(idx,2)==iny),depend(idx) :: iny=shape(idx,2)
+            integer dimension(2,inx,iny),intent(in) :: idx
+            real dimension(nx,ny),intent(in) :: a
+            real intent(in) :: fill
+            real dimension(inx,iny),intent(out),depend(inx,iny) :: b
+        end subroutine interparray
         subroutine reprojectarray(nx,ny,inx,iny,lon,lat,a,xi,yi,fill,b,ierr) ! in :reproject:reproject.F90
             integer, optional,intent(in),check(shape(lon,0)==nx),depend(lon) :: nx=shape(lon,0)
             integer, optional,intent(in),check(shape(lon,1)==ny),depend(lon) :: ny=shape(lon,1)
@@ -17,6 +39,25 @@ python module reproject ! in
             real dimension(inx,iny),intent(out),depend(inx,iny) :: b
             integer intent(out) :: ierr
         end subroutine reprojectarray
+        function inpolygon(x,y,xc,yc) ! in :reproject:reproject.F90
+            real intent(in) :: x
+            real intent(in) :: y
+            real dimension(4),intent(in) :: xc
+            real dimension(4),intent(in) :: yc
+            integer :: inpolygon
+        end function inpolygon
+        function sgn(a,b) ! in :reproject:reproject.F90
+            real intent(in) :: a
+            real intent(in) :: b
+            logical, pure :: sgn
+        end function sgn
+        function norm(x1,y1,x2,y2) ! in :reproject:reproject.F90
+            real intent(in) :: x1
+            real intent(in) :: y1
+            real intent(in) :: x2
+            real intent(in) :: y2
+            real, pure :: norm
+        end function norm
     end interface 
 end python module reproject
 
