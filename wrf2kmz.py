@@ -49,7 +49,7 @@ Dependencies:
 '''
 
 # to turn off reprojection support set this to True
-no_reprojection=False
+no_reprojection=True
 
 # force matplotlib's griddata interpolation
 # rather than custom fortran module
