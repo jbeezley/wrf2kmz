@@ -32,13 +32,14 @@ By default, this kmz will contain an animation of the fire perimeter.  With addi
 variable names specified on the commandline, it will add ground overlays to this file.
 At this time, only 2D surface variables are supported.
 
-Additional caveat:  kmz files expect that ground overlays are unprojected, but
-WRF models can output on a variety of projections.  At this time, this file will
-not unproject data for ground overlays.  So, if your WRF simulation occurs using 
-anything other than regular_ll, the georeferencing will be incorrect.  For the small
-domains (order 10 km) typically used in fire simulations, this error is typically
-quite small (less than the mesh resolution).  In the future, I plan to add an optional
-image reprojecting component based off of gdal python bindings.
+For reprojection support, there is a fortran module that must be compiled.  This should 
+be done automatically using numpy's f2py.  In case compilation of this module fails,
+This script will fall back on a slower method based on matplotlib's griddata method.
+The fortran module is faster because it makes assumptions about the structure of the
+reprojection.  In particular, it assumes that convex sets are projected into convex
+sets.  This may not be true for example in extreme regions of the projection where
+the image is warped significantly.  However, in most cases, the fortran module
+should work well.
 
 Dependencies:
     
@@ -47,8 +48,12 @@ Dependencies:
     netcdf4-python : http://code.google.com/p/netcdf4-python/
 '''
 
+# to turn off reprojection support set this to True
+no_reprojection=False
+
+# force matplotlib's griddata interpolation
+# rather than custom fortran module
 use_matplotlib_reproject=False
-global_reproject=True
 
 # standard library imports
 import sys
@@ -81,20 +86,41 @@ except Exception:
 
 # verbose=False to be quiet
 verbose=True
+
+# used for storing reprojection information between variables
 global _globalReprojectionIdx
 _globalReprojectionIdx={}
 
 def reprojectArray(tag,lon,lat,a,interp='nn'):
+    '''
+    Main reprojection function.  Global variables control what
+    occurs here.
+
+    tag:       A name for the coordinate grid, must be unique for 
+               each different grid.  
+    lon,lat:   Coordinate arrays for the variable
+    a:         Variable to be reprojected.
+    interp:    Interpolation method, currently only 'nn' is supported
+    '''
+    if no_reprojection:
+        # do no reprojection
+        return a
     if have_reproject:
+        # fortran reprojection module
         idx=globalReprojectIdx(tag,lon,lat)
     if have_reproject and idx is not None:
-        #assert idx.shape == lon.shape+(2,)
+        # if index computation was successful, go ahead
+        # and interpolate
         b=reprojectArrayFromTag(tag,a)
     else:
+        # slower griddata reprojection
         b=simpleReproject(lon,lat,a,interp)
     return b
 
 def simpleReproject(lon,lat,a,interp='nn'):
+    '''
+    Reprojection based on matplotlib's griddata.
+    '''
     west=lon.min()
     east=lon.max()
     south=lat.min()
@@ -124,6 +150,7 @@ have_reproject=False
 #    print >> sys.stderr, "Ensure that gdalwarp and gdal_translate are in PATH."
 #    print >> sys.stderr, "Continuing without reprojection support."
 
+# Try to compile the fortran reprojection module if it does not exist
 _p=os.path.dirname(__file__)
 if not os.path.exists(os.path.join(_p,'reproject.so')):
     try:
@@ -136,8 +163,9 @@ if not os.path.exists(os.path.join(_p,'reproject.so')):
             shutil.move('reproject.so',_p)
     except Exception as e:
         print 'Could not compile reprojection module.'
-        
 
+# try and import the reprojection module
+# fall back to griddata reprojection
 try:
     import reproject
     have_reproject=True
@@ -148,22 +176,42 @@ if use_matplotlib_reproject:
     have_reproject=False
 
 def globalReprojectIdx(tag,lon,lat):
+    '''
+    Compute reprojection index from a source grid.  This is the computationally
+    expensive part of the reprojection, so we store the index globally for all
+    variables with the same grid.
+
+    The index is defined be creating a rectangular lat/lon grid with the same
+    extremes as the source projection.  The index then contains the indices of 
+    the closest grid points of source grid to that of the target.  Nearest 
+    neighbor interpolation can then be done in O(n) time from this 
+    '''
     if not have_reproject:
         return None
     global _globalReprojectionIdx
     if not _globalReprojectionIdx.has_key(tag):
+        # generate target grid
         xi=np.linspace(lon.min(),lon.max(),lon.shape[1])
         yi=np.linspace(lat.min(),lat.max(),lat.shape[0])
+
+        # generate index array
         idx,ierr=reproject.reprojectionidx(lon.T,lat.T,xi,yi)
+
+        # check for error
         if ierr != 0:
             print 'Reprojection error for %s' % tag
             idx=None
         else:
             idx=idx
+
+        # store result in global dictionary
         _globalReprojectionIdx[tag]=idx
     return _globalReprojectionIdx[tag]
 
 def reprojectArrayFromTag(tag,a):
+    '''
+    Interpolate the array 'a' from the globally stored index.
+    '''
     global _globalReprojectionIdx
     idx=_globalReprojectionIdx[tag]
     assert idx is not None
@@ -584,6 +632,9 @@ class BaseNetCDF2Raster(object):
         raise Exception('Unimplemented base class method')
 
     def _getTag(self):
+        '''
+        Return a string describing the grid overwhich the variable is defined.
+        '''
         return 'default'
     
     def getRasterFromArray(self,a,istep=None,hsize=3,dpi=300):
@@ -732,6 +783,10 @@ class WRFNetcdf2Raster(BaseNetCDF2Raster):
                                   f.TRUELAT1,f.TRUELAT2,f.STAND_LON,
                                   f.POLE_LAT,f.POLE_LON)
         return proj
+    
+    def _getTag(self):
+        stag=self._var.stagger.replace('Z','')
+        return stag
 
 class FireNetcdf2Raster(WRFNetcdf2Raster):
     '''
@@ -899,6 +954,7 @@ class FireRasterFile(object):
         '''
         vclass,vargs=self._varClasses.get(varname,self._defaultClass)
         if not vargs.has_key('name'):
+            vargs=vargs.copy()
             vargs['name']=varname
         return vclass(self._file,self._file.variables[varname],**vargs)
     
