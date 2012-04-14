@@ -57,6 +57,7 @@ use_matplotlib_reproject=False
 
 # standard library imports
 import sys
+from datetime import timedelta
 from dateutil import parser
 from cStringIO import StringIO
 
@@ -615,10 +616,12 @@ class BaseNetCDF2Raster(object):
         # if the ending time step is valid get it, 
         # otherwise estimate the ending from the delta
         # time of the last two steps
-        if estep >= self._nstep:
+        if estep >= self._nstep and self._nstep > 1:
             end=self.getStepTime(self._nstep-1)
             dt=end-self.getStepTime(self._nstep-2)
             end=end+dt
+        elif self._nstep == 1:
+            end=start+timedelta(hours=1)
         else:
             end=self.getStepTime(estep)
 
