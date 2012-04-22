@@ -57,6 +57,7 @@ use_matplotlib_reproject=False
 
 # standard library imports
 import sys
+import os
 from datetime import timedelta
 from dateutil import parser
 from cStringIO import StringIO
