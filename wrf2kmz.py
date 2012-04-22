@@ -1286,10 +1286,10 @@ def main(wrfout,vars):
 
     f=FireRasterFile(wrfout)
     n=ncKML()
-    r=f.firePerimeterClass()
     try:
         # to make this work for non-fire output files as well
         # don't bomb out if LFN doesn't exist
+        r=f.firePerimeterClass()
         n.setViewFromRaster(r)
         n.polygonFromContour(r,contour=0)
     except Exception:
