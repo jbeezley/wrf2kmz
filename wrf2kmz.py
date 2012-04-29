@@ -946,10 +946,10 @@ class FireRasterFile(object):
             except MaskedArrayException:
                 print 'skipping %s at step=%i' % (varname,istep)
                 continue
-            open('%s_%04i.png' % (varname,istep),'w').write(s)
+            open('%s_%04i.png' % (varname,istep),'wb').write(s)
 
             s=v.getColorbar(istep)
-            open('%s_%04i_c.png' % (varname,istep),'w').write(s)
+            open('%s_%04i_c.png' % (varname,istep),'wb').write(s)
 
     def rasterClassFromVar(self,varname):
         '''
@@ -1127,7 +1127,7 @@ class ncKML(Kml):
 
             # get a filename to save the image to 
             fname=fnamefmt % {'dir':self._filesdir,'name':raster.getName(),'step':i}
-            open(fname,'w').write(img)
+            open(fname,'wb').write(img)
 
             # add a ground overlay element and populate its properties
             g=f.newgroundoverlay(name='%s_%05i' % (raster.getName(),i) )
@@ -1149,7 +1149,7 @@ class ncKML(Kml):
 
                 # get file name to save the colorbar to
                 fname=fnamefmt % {'dir':self._filesdir,'name':raster.getName()+'_c','step':i}
-                open(fname,'w').write(img)
+                open(fname,'wb').write(img)
 
                 # add a new screen overlay element and populate its properties
                 g=f.newscreenoverlay(name='%s_c_%05i' % (raster.getName(),i) )
@@ -1249,15 +1249,15 @@ def test(wrfout):
         r3=FireNetcdf2Raster(f,f.variables['ZSF'],name='ZSF')
         r4=FireNetcdf2Raster(f,f.variables['F_LINEINT2'],name='F_LINEINT2')
     
-        open('UF.png','w').write(r1.getRaster(1))
-        open('FGRNHFX.png','w').write(r2.getRaster(5))
-        open('ZSF.png','w').write(r3.getRaster(0))
-        open('F_LINEINT2.png','w').write(r4.getRaster(5))
+        open('UF.png','wb').write(r1.getRaster(1))
+        open('FGRNHFX.png','wb').write(r2.getRaster(5))
+        open('ZSF.png','wb').write(r3.getRaster(0))
+        open('F_LINEINT2.png','wb').write(r4.getRaster(5))
     
-        open('UF_c.png','w').write(r1.getColorbar(1))
-        open('FGRNHFX_c.png','w').write(r2.getColorbar(5))
-        open('ZSF_c.png','w').write(r3.getColorbar(0))
-        open('F_LINEINT2_c.png','w').write(r4.getColorbar(5))
+        open('UF_c.png','wb').write(r1.getColorbar(1))
+        open('FGRNHFX_c.png','wb').write(r2.getColorbar(5))
+        open('ZSF_c.png','wb').write(r3.getColorbar(0))
+        open('F_LINEINT2_c.png','wb').write(r4.getColorbar(5))
 
     f=FireRasterFile(wrfout)
     uf=f.rasterClassFromVar('UF')
