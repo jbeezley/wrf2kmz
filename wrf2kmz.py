@@ -911,7 +911,9 @@ class FireRasterFile(object):
         'GRNHFX':(LogScaleRaster,{}),
         'FLINEINT':(NegativeMaskedRaster,{}),
         'FLINEINT2':(NegativeMaskedRaster,{}),
-        'NFUEL_CAT':(ZeroMaskedRaster,{'static':True})
+        'NFUEL_CAT':(ZeroMaskedRaster,{'static':True}),
+        'UF':(FireNetcdf2Raster,{'cmap':pylab.cm.hsv}),
+        'VF':(FireNetcdf2Raster,{'cmap':pylab.cm.hsv})
     }
 
     # default display style for variables not listed above
