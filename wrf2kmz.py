@@ -915,8 +915,8 @@ class FireRasterFile(object):
         'FLINEINT':(NegativeMaskedRaster,{}),
         'FLINEINT2':(NegativeMaskedRaster,{}),
         'NFUEL_CAT':(ZeroMaskedRaster,{'static':True}),
-        'UF':(FireNetcdf2Raster,{'cmap':pylab.cm.hsv}),
-        'VF':(FireNetcdf2Raster,{'cmap':pylab.cm.hsv})
+        'UF':(FireNetcdf2Raster,{'cmap':pylab.cm.hsv,'minmax':(-5,5)}),  # change colormap and use a static minmax
+        'VF':(FireNetcdf2Raster,{'cmap':pylab.cm.hsv,'minmax':(-5,5)})
     }
 
     # default display style for variables not listed above
