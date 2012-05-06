@@ -901,7 +901,20 @@ class FirePerimeter(FireNetcdf2Raster):
 
     def getName(self):
         return 'Fire perimeter'
-    
+
+# custom colormap
+cdict = {'red': ((0.0, 1.0, 1.0),
+                 (0.5, 0.5, 0.0),
+                 (1.0, 0.0, 0.0)),
+         'green': ((0.0, 0.0, 0.0),
+                   (0.5, 0.0, 0.0),
+                   (1.0, 0.0, 0.0)),
+         'blue': ((0.0, 0.0, 0.0),
+                  (0.5, 0.0, 0.5),
+                  (1.0, 1.0, 1.0))}
+
+my_cmap = matplotlib.colors.LinearSegmentedColormap('my_colormap',cdict,256)
+
 class FireRasterFile(object):
     '''
     This is a convenience class for storing defaults for various variables
@@ -915,7 +928,7 @@ class FireRasterFile(object):
         'FLINEINT':(NegativeMaskedRaster,{}),
         'FLINEINT2':(NegativeMaskedRaster,{}),
         'NFUEL_CAT':(ZeroMaskedRaster,{'static':True}),
-        'UF':(FireNetcdf2Raster,{'cmap':pylab.cm.hsv,'minmax':(-5,5)}),  # change colormap and use a static minmax
+        'UF':(FireNetcdf2Raster,{'cmap':my_cmap,'minmax':(-5,5)}),  # change colormap and use a static minmax
         'VF':(FireNetcdf2Raster,{'cmap':pylab.cm.hsv,'minmax':(-5,5)})
     }
 
