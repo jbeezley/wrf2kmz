@@ -263,7 +263,7 @@ class BaseNetCDF2Raster(object):
                  minmaxglobal=None,maskedValues=None,maskedAbove=None, \
                  maskedBelow=None,static=False,displayName=None,
                  displayDescription=None,displayColorbar=True,
-                 displayAlpha=180,name=None):
+                 displayAlpha=180,name=None,minmax=None):
         '''
         Initialize a raster class object.
 
@@ -299,7 +299,8 @@ class BaseNetCDF2Raster(object):
             displayAlpha:   An integer in the range 0-255 giving the transparency of the
                             ground overlay.  0 means transparent, 255 means opaque.
                             (default 180)
-            minmaxglobal: unimplemented
+            minmaxglobal:   unimplemented
+            minmax:         set a static min/max for display of the variable as a tuple (min,max)
 
         '''
 
@@ -313,7 +314,7 @@ class BaseNetCDF2Raster(object):
         # store arguments
         self._file=file
         self._var=var
-        self._minmax=None
+        self._minmax=minmax
         self._norm=self.setToDefaultifNone(norm,self.defaultNorm)
         self._cmap=self.setToDefaultifNone(cmap,self.defaultcmap)
         self._formatter=self.setToDefaultifNone(formatter,self.defaultFormatter)
@@ -526,7 +527,9 @@ class BaseNetCDF2Raster(object):
         '''
         Returns the minimum and maximum of the variable at istep.
         '''
-        if self._minmaxglobal:
+        if self._minmax is not None:
+            minmax=self._minmax
+        elif self._minmaxglobal:
             if self._minmax is None:
                 a=self._readArray()
                 self._minmax=(a.min(),a.max())
