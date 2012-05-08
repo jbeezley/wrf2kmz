@@ -670,9 +670,12 @@ class BaseNetCDF2Raster(object):
         # generate a matplotlib figure object
         fig=pylab.figure(figsize=(hsize,hsize*float(a.shape[0])/a.shape[1]))
         ax=fig.add_axes([0,0,1,1])
-
+        
+        minmax=self.getMinMax(istep)
+        if minmax is None:
+            minmax=(a[a==a].min(),a[a==a].max())
         # get a color norm instance from the min/max of a
-        norm=self._norm(a[a==a].min(),a[a==a].max())
+        norm=self._norm(minmax[0],minmax[1])
 
         # add image to the axis
         ax.imshow(np.flipud(a),cmap=self._cmap,norm=norm,interpolation='nearest')
@@ -923,7 +926,7 @@ class FireRasterFile(object):
 
     # define display styles for individual variables
     _varClasses={
-        'FGRNHFX':(LogScaleRaster,{}),
+        'FGRNHFX':(LogScaleRaster,{'minmax':(1,2)}),
         'GRNHFX':(LogScaleRaster,{}),
         'FLINEINT':(NegativeMaskedRaster,{}),
         'FLINEINT2':(NegativeMaskedRaster,{}),
