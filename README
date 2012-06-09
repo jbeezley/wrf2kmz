@@ -21,9 +21,10 @@ Dependencies:
     netcdf4-python : http://code.google.com/p/netcdf4-python/
 
 WARNING:  KMZ files expect that ground overlays are unprojected, but
-WRF models can output on a variety of projections.  At this time, this file will
-not unproject data for ground overlays.  So, if your WRF simulation occurs using 
-anything other than regular_ll, the georeferencing will be incorrect.  For the small
-domains (order 10 km) typically used in fire simulations, this error is typically
-quite small (less than the mesh resolution).  In the future, I plan to add an 
-optional image reprojecting component based off of gdal python bindings.
+WRF models can output on a variety of projections.  There is an experimental
+reprojection component that is turned of by default.  You can try
+to enable this by setting no_reprojection=True in the source.  There
+are two methods for reprojection.  The first is a custom fortran module
+that requires a working installation of f2py.  The second is used if
+the fortran module cannot be compiled.  It uses a call to matplotlib's
+griddate function and is significantly slower on large domains.
