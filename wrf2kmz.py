@@ -412,15 +412,18 @@ class BaseNetCDF2Raster(object):
         return b
 
     def _readArray(self,istep=None):
+        return self._readVar(self._var,istep)
+
+    def _readVar(self,var,istep=None):
         '''
         Read data from the netCDF variable.  If istep is not None, then
         read a single time step.
         '''
         # read data
         if istep is None:
-            a=self._var[:]
+            a=var[:]
         else:
-            a=self._var[istep,...].squeeze()
+            a=var[istep,...].squeeze()
 
         a=self.applyMask(a)
 
@@ -532,12 +535,16 @@ class BaseNetCDF2Raster(object):
         elif self._minmaxglobal:
             if self._minmax is None:
                 a=self._readArray()
-                self._minmax=(a.min(),a.max())
+                self._minmax=self.arrayMinMax(a)
             minmax=self._minmax
         else:
             a=self._readArray(istep)
-            minmax=(a[a==a].min(),a[a==a].max())
+            minmax=self.arrayMinMax(a)
         return minmax
+    
+    @classmethod
+    def arrayMinMax(cls,a):
+        return (a[a==a].min(),a[a==a].max())
 
     def getUnits(self):
         '''
@@ -861,6 +868,62 @@ class FireNetcdf2Raster(WRFNetcdf2Raster):
         else:
             return WRFNetcdf2Raster._getTag(self)
 
+class Vector2Raster(FireNetcdf2Raster):
+    '''
+    Converts vector data to arrow plots using matplotlib's quiver.
+    '''
+
+    def __init__(self,file,varx,vary,numarrows=(25,25),**kwargs):
+        self._varx=varx
+        self._vary=vary
+        self._numarrows=numarrows
+        kwargs['displayColorbar']=False
+        super(Vector2Raster,self).__init__(file,varx,**kwargs)
+
+    def _readArray(self,istep=None,xy=None):
+        return (self._readVar(self._varx,istep),self._readVar(self._vary,istep))
+
+    def perimeterFromContour(self,*args,**kwargs):
+        raise Exception("Unsupported function for class Vector2Raster")
+
+    @classmethod
+    def arrayMinMax(cls,a):
+        d=(a[0]**2+a[1]**2)**.5
+        return FireNetcdf2Raster.arrayMinMax(d)
+
+    def reprojectArray(self,a,istep=None,idx=None):
+        print >> sys.stderr , 'WARNING: Reprojecting of vector data not yet supported.'
+
+    @classmethod
+    def reduceVector(cls,ax,np):
+        nx=max(1,ax.shape[1]/np[0])
+        ny=max(1,ax.shape[0]/np[1])
+        sx=(ax.shape[1]-nx*np[0])/2
+        sy=(ax.shape[0]-ny*np[1])/2
+        return ax[sy:-sy:ny,sx:-sx:nx]
+
+    def getRasterFromArray(self,a,istep=None,hsize=3,dpi=300):
+        a=( self.reduceVector(a[0],self._numarrows), self.reduceVector(a[1],self._numarrows))
+        fig=pylab.figure(figsize=(hsize,hsize*float(a[0].shape[0])/a[0].shape[1]))
+        ax=fig.add_axes([0,0,1,1])
+
+        minmax=self.getMinMax(istep)
+        norm=self._norm(minmax[0],minmax[1])
+
+        ax.quiver(a[0],a[1],(a[0]**2+a[1]**2)**.5)
+
+        ax.axis('off')
+        im=StringIO()
+
+        fig.savefig(im,dpi=dpi,format='png',transparent=True)
+        pylab.close(fig)
+
+        return im.getvalue()
+
+    def georeference(self,istep=None):
+        lon,lat=self.readCoordinates(istep)
+        return {'west':lon.min(),'east':lon.max(),'south':lat.min(),'north':lat.max()}
+
 class LogScaleRaster(FireNetcdf2Raster):
     '''
     A raster class with defaults that generate log scale images.
@@ -932,7 +995,8 @@ class FireRasterFile(object):
         'FLINEINT2':(NegativeMaskedRaster,{}),
         'NFUEL_CAT':(ZeroMaskedRaster,{'static':True}),
         'UF':(FireNetcdf2Raster,{'cmap':my_cmap,'minmax':(-5,5)}),  # change colormap and use a static minmax
-        'VF':(FireNetcdf2Raster,{'cmap':pylab.cm.hsv,'minmax':(-5,5)})
+        'VF':(FireNetcdf2Raster,{'cmap':pylab.cm.hsv,'minmax':(-5,5)}),
+        ('UF','VF'):(Vector2Raster,{})
     }
 
     # default display style for variables not listed above
@@ -978,10 +1042,19 @@ class FireRasterFile(object):
         default style.
         '''
         vclass,vargs=self._varClasses.get(varname,self._defaultClass)
+        if not isinstance(varname,basestring):
+            varstring=','.join(varname)
+        else:
+            varstring=varname
         if not vargs.has_key('name'):
             vargs=vargs.copy()
-            vargs['name']=varname
-        return vclass(self._file,self._file.variables[varname],**vargs)
+            vargs['name']=varstring
+        
+        if isinstance(varname,basestring):
+            return vclass(self._file,self._file.variables[varname],**vargs)
+        else:
+            return vclass(self._file,self._file.variables[varname[0]],
+                          self._file.variables[varname[1]],**vargs)
     
     def firePerimeterClass(self):
         '''
@@ -1316,6 +1389,11 @@ def main(wrfout,vars):
     except Exception:
         pass
     for v in vars:
+        z=v.split(':')
+        if len(z) == 2:
+            v = tuple(z)
+        elif len(z) > 2:
+            raise Exception('Only 2D vectors are supported')
         try:
             r=f.rasterClassFromVar(v)
             n.groundOverlayFromRaster(r)
