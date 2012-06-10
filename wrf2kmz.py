@@ -874,14 +874,41 @@ class Vector2Raster(FireNetcdf2Raster):
     '''
 
     def __init__(self,file,varx,vary,numarrows=(25,25),**kwargs):
+        fvx=self._isfiregridvar(varx)
+        fvy=self._isfiregridvar(vary)
+        if not fvx == fvy:
+            raise Exception("Incompatible vector variables specified")
         self._varx=varx
         self._vary=vary
         self._numarrows=numarrows
         kwargs['displayColorbar']=False
         super(Vector2Raster,self).__init__(file,varx,**kwargs)
 
+    @classmethod
+    def _interpStag(cls,a,stag):
+        if stag == 'y':
+            return (a[:-1,:] + a[1:,:])/2.
+        elif stag == 'x':
+            return (a[:,:-1] + a[:,1:])/2.
+        else:
+            return a
+
+    @classmethod
+    def _getStag(cls,var):
+        if var.dimensions[-1][:-5] == '_stag':
+            return 'x'
+        elif var.dimensions[-2][:-5] == '_stag':
+            return 'y'
+        elif var.dimensions[-3][:-5] == '_stag':
+            return 'z'
+        else:
+            return ''
+    
     def _readArray(self,istep=None,xy=None):
-        return (self._readVar(self._varx,istep),self._readVar(self._vary,istep))
+        stagx=self._getStag(self._varx)
+        stagy=self._getStag(self._vary)
+        return (self._interpStag(self._readVar(self._varx,istep),stagx), \
+                self._interpStag(self._readVar(self._vary,istep),stagy))
 
     def perimeterFromContour(self,*args,**kwargs):
         raise Exception("Unsupported function for class Vector2Raster")
@@ -923,6 +950,16 @@ class Vector2Raster(FireNetcdf2Raster):
     def georeference(self,istep=None):
         lon,lat=self.readCoordinates(istep)
         return {'west':lon.min(),'east':lon.max(),'south':lat.min(),'north':lat.max()}
+
+    def getCoordinates(self):
+        fvx=self._isfiregridvar(self._varx)
+        fvy=self._isfiregridvar(self._vary)
+        c=super(Vector2Raster,self).getCoordinates()
+        if fvx and fvy:
+            return c
+        else:
+            return ('XLONG','XLAT')
+
 
 class LogScaleRaster(FireNetcdf2Raster):
     '''
