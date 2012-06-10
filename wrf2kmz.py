@@ -874,6 +874,14 @@ class Vector2Raster(FireNetcdf2Raster):
     '''
 
     def __init__(self,file,varx,vary,numarrows=(25,25),**kwargs):
+        '''
+        Constructor.  Differs from superclass constructor by taking two variables
+        rather than one for the vector components.
+
+        numarrows: two element tuple containing the number of arrows to display in each axis
+        '''
+
+        # check for compatibility
         fvx=self._isfiregridvar(varx)
         fvy=self._isfiregridvar(vary)
         if not fvx == fvy:
@@ -881,20 +889,28 @@ class Vector2Raster(FireNetcdf2Raster):
         self._varx=varx
         self._vary=vary
         self._numarrows=numarrows
-        kwargs['displayColorbar']=False
         super(Vector2Raster,self).__init__(file,varx,**kwargs)
 
     @classmethod
     def _interpStag(cls,a,stag):
-        if stag == 'y':
+        '''
+        Interpolation of staggered wind variables.  
+
+        a:     variable array
+        stag:  stag 'x' or 'y' indicates staggering, otherwise do nothing
+        '''
+        if stag.lower() == 'y':
             return (a[:-1,:] + a[1:,:])/2.
-        elif stag == 'x':
+        elif stag.lower() == 'x':
             return (a[:,:-1] + a[:,1:])/2.
         else:
             return a
 
     @classmethod
     def _getStag(cls,var):
+        '''
+        Return the staggering of a variable.  (Assumes only staggered in one axis)
+        '''
         if var.dimensions[-1][:-5] == '_stag':
             return 'x'
         elif var.dimensions[-2][:-5] == '_stag':
@@ -904,25 +920,41 @@ class Vector2Raster(FireNetcdf2Raster):
         else:
             return ''
     
-    def _readArray(self,istep=None,xy=None):
+    def _readArray(self,istep=None):
+        '''
+        Vector readArray returns tuple of both coordinates of vector data.
+        '''
         stagx=self._getStag(self._varx)
         stagy=self._getStag(self._vary)
         return (self._interpStag(self._readVar(self._varx,istep),stagx), \
                 self._interpStag(self._readVar(self._vary,istep),stagy))
 
     def perimeterFromContour(self,*args,**kwargs):
+        '''
+        Perimeter support disabled for vector data.
+        '''
         raise Exception("Unsupported function for class Vector2Raster")
 
     @classmethod
     def arrayMinMax(cls,a):
+        '''
+        Return min/max of vector data (using cartesian norm).
+        '''
         d=(a[0]**2+a[1]**2)**.5
         return FireNetcdf2Raster.arrayMinMax(d)
 
     def reprojectArray(self,a,istep=None,idx=None):
+        # maybe support in the future, but due to how vector data is displayed, 
+        # the exacted georeferencing is less important.  First I should work on
+        # improving where the arrow bases are located via reduceVector.
         print >> sys.stderr , 'WARNING: Reprojecting of vector data not yet supported.'
 
     @classmethod
     def reduceVector(cls,ax,np):
+        '''
+        Get a sub array of vector data.  We only want to show a reduced number of arrows
+        in the quiver plot.
+        '''
         nx=max(1,ax.shape[1]/np[0])
         ny=max(1,ax.shape[0]/np[1])
         sx=(ax.shape[1]-nx*np[0])/2
@@ -930,6 +962,9 @@ class Vector2Raster(FireNetcdf2Raster):
         return ax[sy:-sy:ny,sx:-sx:nx]
 
     def getRasterFromArray(self,a,istep=None,hsize=3,dpi=300):
+        '''
+        Similar to superclass method, but generates a quiver plot.
+        '''
         a=( self.reduceVector(a[0],self._numarrows), self.reduceVector(a[1],self._numarrows))
         fig=pylab.figure(figsize=(hsize,hsize*float(a[0].shape[0])/a[0].shape[1]))
         ax=fig.add_axes([0,0,1,1])
@@ -948,10 +983,16 @@ class Vector2Raster(FireNetcdf2Raster):
         return im.getvalue()
 
     def georeference(self,istep=None):
+        '''
+        Georeferencing without support of restricted arrays.
+        '''
         lon,lat=self.readCoordinates(istep)
         return {'west':lon.min(),'east':lon.max(),'south':lat.min(),'north':lat.max()}
 
     def getCoordinates(self):
+        '''
+        Atmospheric variables are always on cell centered grids.
+        '''
         fvx=self._isfiregridvar(self._varx)
         fvy=self._isfiregridvar(self._vary)
         c=super(Vector2Raster,self).getCoordinates()
@@ -1436,7 +1477,7 @@ def main(wrfout,vars):
             n.groundOverlayFromRaster(r)
         except Exception as e:
             print e
-            print 'Error processing %s... skipping.' % v
+            print 'Error processing %s... skipping.' % str(v)
 
     n.savekmz('wrf.kmz')
 
@@ -1444,8 +1485,12 @@ if __name__ == '__main__':
     import sys
     if len(sys.argv) <= 1:
         print 'usage: %s wrfout [var1 [var2 [ ... ] ] ]' % sys.argv[0]
-        print 'Outputs wrf.kmz containing the ground overlays'
-        print 'of the variables specified on the commandline.'
+        print 'Outputs wrf.kmz containing the ground overlays of the variables'
+        print 'specified on the commandline.'
+        print ''
+        print 'To generate a quiver plot of vector data the syntax is `var1:var2`. ' 
+        print 'For example,'
+        print '%s wrfout UF:VF' % sys.argv[0]
         sys.exit(1)
 
     main(sys.argv[1],sys.argv[2:])
