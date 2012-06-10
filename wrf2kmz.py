@@ -1122,6 +1122,8 @@ class FireRasterFile(object):
         vclass,vargs=self._varClasses.get(varname,self._defaultClass)
         if not isinstance(varname,basestring):
             varstring=','.join(varname)
+            if not isinstance(vclass,Vector2Raster):
+                vclass=Vector2Raster
         else:
             varstring=varname
         if not vargs.has_key('name'):
