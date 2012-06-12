@@ -263,7 +263,8 @@ class BaseNetCDF2Raster(object):
                  minmaxglobal=None,maskedValues=None,maskedAbove=None, \
                  maskedBelow=None,static=False,displayName=None,
                  displayDescription=None,displayColorbar=True,
-                 displayAlpha=180,name=None,minmax=None):
+                 displayAlpha=180,name=None,minmax=None,accum=None,
+                 accumsumhours=None,norestriction=False):
         '''
         Initialize a raster class object.
 
@@ -301,6 +302,12 @@ class BaseNetCDF2Raster(object):
                             (default 180)
             minmaxglobal:   unimplemented
             minmax:         set a static min/max for display of the variable as a tuple (min,max)
+            accum:          True if the variable contains accumulated values such as RAINC.
+                            The script will display deltas between time steps.
+            accumsumhours:  Number of hours to accumulate data from each time step.
+                            For example, var=RAINC,accum=True,accumsumhours=3 will display
+                            a three hour rolling sum of rain accumulation.
+            norestriction:  If true, don't restrict images around valid data.
 
         '''
 
@@ -330,6 +337,9 @@ class BaseNetCDF2Raster(object):
         self.displayAlpha=displayAlpha
         self._name=name
         self._gref={}
+        self._accum=accum
+        self._accumsumhours=accumsumhours
+        self._norestriction=norestriction
 
         if self._minmaxglobal:
             raise Exception("Global min-max computation not yet supported.")
@@ -411,8 +421,27 @@ class BaseNetCDF2Raster(object):
         self._gref[istep]=bds
         return b
 
-    def _readArray(self,istep=None):
-        return self._readVar(self._var,istep)
+    def _readArray(self,istep=None,skipaccumsum=False):
+        if istep is None and self._accum:
+            raise Exception("Don't know how to read non-time step accumulation variables.")
+        a=self._readVar(self._var,istep)
+        if self._accum and istep > 0:
+            a=a-self._readVar(self._var,istep-1)
+        if self._accumsumhours and not skipaccumsum:
+            iend=istep
+            tend=self.getStepTime(istep)
+            istart=istep
+            tstart=tend
+            i=istep-1
+            while i >= 0 and (tend-tstart).total_seconds()/3600. < self._accumsumhours:
+                tstart=self.getStepTime(i)
+                istart=i
+                i=i-1
+            for i in xrange(istart,iend):
+                a=a+self._readArray(istep=i,skipaccumsum=True)
+        return a
+                
+
 
     def _readVar(self,var,istep=None):
         '''
@@ -462,7 +491,6 @@ class BaseNetCDF2Raster(object):
                contains the index bounds that we are displaying as returned
                from _getRestriction.
         '''
-
         # get coordinate array names
         c=self.getCoordinates()
         if c is None:
@@ -474,7 +502,7 @@ class BaseNetCDF2Raster(object):
 
         # if no index bounds given, then return the full arrays
         if idx is None:
-            idx=(0,lon.shape[0]-1,0,lon.shape[1]-1)
+            idx=(0,lon.shape[-2]-1,0,lon.shape[-1]-1)
         
         # restrict coordinate arrays from index bounds
         if istep is None:
@@ -588,8 +616,11 @@ class BaseNetCDF2Raster(object):
         if self._gref.has_key(istep):
             return self._gref[istep]
         a=self._readArray(istep)
-        idx=self._getRestriction(a)
-        lon,lat=self.readCoordinates(istep,idx)
+        if not self._norestriction:
+            idx=self._getRestriction(a)
+        else:
+            idx=None
+        lon,lat=self.readCoordinates(istep=istep,idx=idx)
         return {'west':lon.min(),'east':lon.max(),'south':lat.min(),'north':lat.max()}
    
     def getTimeDim(self):
@@ -668,7 +699,10 @@ class BaseNetCDF2Raster(object):
             raise MaskedArrayException
 
         # get subarray restriction from mask
-        idx=self._getRestriction(a)
+        if self._norestriction:
+            idx=[0,a.shape[0]-1,0,a.shape[1]-1]
+        else:
+            idx=self._getRestriction(a)
 
         a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
         lon=lon[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
@@ -831,12 +865,12 @@ class FireNetcdf2Raster(WRFNetcdf2Raster):
         '''
         return var.dimensions[-1][-8:] == '_subgrid'
 
-    def _readArray(self,istep=0):
+    def _readArray(self,istep=0,**kwargs):
         '''
         Same as base class _readArray, but ignores the extra space that is present
         for fire grid variables.
         '''
-        a=WRFNetcdf2Raster._readArray(self,istep)
+        a=WRFNetcdf2Raster._readArray(self,istep,**kwargs)
         if self._isfiregridvar(self._var):
             return a[:-self.sry,:-self.srx]
         else:
