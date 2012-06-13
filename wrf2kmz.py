@@ -53,7 +53,7 @@ no_reprojection=True
 
 # force matplotlib's griddata interpolation
 # rather than custom fortran module
-use_matplotlib_reproject=False
+use_matplotlib_reproject=True
 
 # standard library imports
 import sys
@@ -261,10 +261,11 @@ class BaseNetCDF2Raster(object):
 
     def __init__(self,file,var,norm=None,cmap=None,formatter=None,\
                  minmaxglobal=None,maskedValues=None,maskedAbove=None, \
-                 maskedBelow=None,static=False,displayName=None,
-                 displayDescription=None,displayColorbar=True,
-                 displayAlpha=180,name=None,minmax=None,accum=None,
-                 accumsumhours=None,norestriction=False):
+                 maskedBelow=None,static=False,displayName=None, \
+                 displayDescription=None,displayColorbar=True, \
+                 displayAlpha=180,name=None,minmax=None,accum=None, \
+                 accumsumhours=None,norestriction=False,colorbarargs={}, \
+                 subdomain=None):
         '''
         Initialize a raster class object.
 
@@ -308,6 +309,11 @@ class BaseNetCDF2Raster(object):
                             For example, var=RAINC,accum=True,accumsumhours=3 will display
                             a three hour rolling sum of rain accumulation.
             norestriction:  If true, don't restrict images around valid data.
+            colorbarargs:   Extra keyword arguments for colorbar constructor.
+            subdomain:      Only display a subdomain.  This should be a dictionary containing
+                            keys, 'centerlat' and 'centerlon' for the center coordinates of the
+                            subdomain, and 'dx' and 'dy' for the width and height of the subdomain
+                            in meters.
 
         '''
 
@@ -340,6 +346,7 @@ class BaseNetCDF2Raster(object):
         self._accum=accum
         self._accumsumhours=accumsumhours
         self._norestriction=norestriction
+        self._colorbarargs=colorbarargs
 
         if self._minmaxglobal:
             raise Exception("Global min-max computation not yet supported.")
@@ -350,6 +357,30 @@ class BaseNetCDF2Raster(object):
             self._nstep=1
         else:
             self._nstep=len(self._file.dimensions[self._tdim])
+        
+        self._subdomain=None
+        if subdomain is not None:
+            lon,lat=self.readCoordinates(istep=0,idx=None)
+            lonc=subdomain['centerlon']
+            latc=subdomain['centerlat']
+            iy,ix=self._findPointIndex(lonc,latc,lon,lat)
+
+            dx,dy=self._getDXDY()
+            nx=np.ceil(subdomain['dx']/float(dx))
+            ny=np.ceil(subdomain['dy']/float(dy))
+
+            istart=np.floor(ix-nx/2.)
+            iend=np.ceil(ix+nx/2.)
+            jstart=np.floor(iy-ny/2.)
+            jend=np.ceil(iy+ny/2.)
+
+            istart=max(istart,0)
+            iend=min(iend,lon.shape[-1]-1)
+            jstart=max(jstart,0)
+            jend=min(jend,lon.shape[-2]-1)
+
+            self._subdomain=( int(jstart),int(jend),int(istart),int(iend) )
+
 
     # The following are some property getters, in case of later abstractions.
     @property
@@ -379,6 +410,22 @@ class BaseNetCDF2Raster(object):
     @property
     def static(self):
         return self._static
+
+    def _getDXDY(self):
+        '''
+        Return the grid spacing in meters as (dx,dy).
+        '''
+        raise Exception("Unimplemented super class method.")
+
+    @staticmethod
+    def _findPointIndex(px,py,lon,lat):
+        '''
+        Return the index of lon/lat of the closest point to (px,py).
+        '''
+        d=( (px-lon)*(px-lon) + (py-lat)*(py-lat) )
+        imin=d.flatten().argmin()
+        return np.unravel_index(imin,d.shape)
+        
     
     @staticmethod
     def setToDefaultifNone(value,default):
@@ -513,13 +560,15 @@ class BaseNetCDF2Raster(object):
             lat=lat[istep,idx[0]:idx[1]+1,idx[2]:idx[3]+1].squeeze()
         return (lon,lat)
             
-    @classmethod
-    def _getRestriction(cls,a):
+    def _getRestriction(self,a):
         '''
         Return indices of the smallest subarray covering the non-masked values of a.
         Assumes a is 2D.
         '''
         assert a.ndim == 2
+        
+        if self._subdomain is not None:
+            return self._subdomain
 
         #if (a != a).all():
         #    raise MaskedArrayException
@@ -616,7 +665,7 @@ class BaseNetCDF2Raster(object):
         if self._gref.has_key(istep):
             return self._gref[istep]
         a=self._readArray(istep)
-        if not self._norestriction:
+        if not self._norestriction or self._subdomain is not None:
             idx=self._getRestriction(a)
         else:
             idx=None
@@ -699,7 +748,7 @@ class BaseNetCDF2Raster(object):
             raise MaskedArrayException
 
         # get subarray restriction from mask
-        if self._norestriction:
+        if self._norestriction and self._subdomain is None:
             idx=[0,a.shape[0]-1,0,a.shape[1]-1]
         else:
             idx=self._getRestriction(a)
@@ -755,6 +804,7 @@ class BaseNetCDF2Raster(object):
         # construct keyword arguments for ColorbarBase constructor
         kwargs={'norm':norm,'spacing':'proportional','orientation':'vertical',
                 'cmap':self._cmap}
+        kwargs.update(self._colorbarargs)
         if self._formatter is not None:
             kwargs['format']=self._formatter
         
@@ -839,6 +889,9 @@ class WRFNetcdf2Raster(BaseNetCDF2Raster):
         stag=self._var.stagger.replace('Z','')
         return stag
 
+    def _getDXDY(self):
+        return (self._file.DX,self._file.DY)
+
 class FireNetcdf2Raster(WRFNetcdf2Raster):
     '''
     BaseNetcdf2Raster implementation for WRF-Fire files.  Generally this is the same as the
@@ -901,6 +954,13 @@ class FireNetcdf2Raster(WRFNetcdf2Raster):
             return 'fire'
         else:
             return WRFNetcdf2Raster._getTag(self)
+
+    def _getDXDY(self):
+        dx,dy=super(FireNetcdf2Raster,self)._getDXDY()
+        if self._isfiregridvar(self._var):
+            dx=dx/float(self.srx)
+            dy=dy/float(self.sry)
+        return (dx,dy)
 
 class Vector2Raster(FireNetcdf2Raster):
     '''
