@@ -3,6 +3,21 @@ import sys
 from netCDF4 import Dataset
 from wrf2kmz import *
 
+from matplotlib import colors,cm
+
+#clist=['white','#CCFF00','#66FF00',]
+bounds=[0,1,5,10,25,50,100,250,500,1000]
+
+basecmap=cm.jet
+clist=[]
+N=len(bounds)-1
+for i in np.linspace(0,basecmap.N,N):
+    clist.append(basecmap(float(i)/basecmap.N)[:-1])
+
+cmap=colors.ListedColormap(clist)
+norm=colors.BoundaryNorm(bounds,cmap.N)
+cbarargs={'boundaries':bounds,'ticks':bounds,'spacing':'uniform'}
+
 class LightningRaster(ZeroMaskedRaster):
     pass
 
@@ -49,8 +64,10 @@ Creates lightning.kmz from the contents of wrfout.
         file=args[0]
 
     f=Dataset(file,'r')
-    lpos=LightningRaster(f,f.variables['LPOS'],name='LPOS',accum=True,accumsumhours=3,subdomain=subdomain)
-    lneg=LightningRaster(f,f.variables['LNEG'],name='LNEG',accum=True,accumsumhours=3,subdomain=subdomain)
+    lpos=LightningRaster(f,f.variables['LPOS'],name='LPOS',accum=True,accumsumhours=3,subdomain=subdomain,
+                         cmap=cmap,norm=norm,colorbarargs=cbarargs,interp='bicubic')
+    lneg=LightningRaster(f,f.variables['LNEG'],name='LNEG',accum=True,accumsumhours=3,subdomain=subdomain,
+                         cmap=cmap,norm=norm,colorbarargs=cbarargs,interp='bicubic')
 
     n=ncKML()
     n.setViewFromRaster(lpos)

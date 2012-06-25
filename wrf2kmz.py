@@ -53,7 +53,7 @@ no_reprojection=False
 
 # force matplotlib's griddata interpolation
 # rather than custom fortran module
-use_matplotlib_reproject=True
+use_matplotlib_reproject=False
 
 # standard library imports
 import sys
