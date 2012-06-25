@@ -236,7 +236,7 @@ class BaseNetCDF2Raster(object):
     '''
 
     # default matplotlib norm object (maps variable range to [0,1] for coloring)
-    defaultNorm=matplotlib.colors.Normalize
+    defaultNorm=None
 
     # default matplotlib colormap
     defaultcmap=pylab.cm.jet
@@ -266,7 +266,7 @@ class BaseNetCDF2Raster(object):
                  displayDescription=None,displayColorbar=True, \
                  displayAlpha=180,name=None,minmax=None,accum=None, \
                  accumsumhours=None,norestriction=False,colorbarargs={}, \
-                 subdomain=None):
+                 subdomain=None,cmapboundaries=None,interp='nearest'):
         '''
         Initialize a raster class object.
 
@@ -315,6 +315,8 @@ class BaseNetCDF2Raster(object):
                             keys, 'centerlat' and 'centerlon' for the center coordinates of the
                             subdomain, and 'dx' and 'dy' for the width and height of the subdomain
                             in meters.
+            interp          How to interpolate onto image ('nearest','bilinear','bicubic', etc).
+                            See options in matplotlib imshow method.
 
         '''
 
@@ -348,6 +350,7 @@ class BaseNetCDF2Raster(object):
         self._accumsumhours=accumsumhours
         self._norestriction=norestriction
         self._colorbarargs=colorbarargs
+        self._interp=interp
 
         if self._minmaxglobal:
             raise Exception("Global min-max computation not yet supported.")
@@ -766,10 +769,13 @@ class BaseNetCDF2Raster(object):
         if minmax is None:
             minmax=(a[a==a].min(),a[a==a].max())
         # get a color norm instance from the min/max of a
-        norm=self._norm(minmax[0],minmax[1])
+        if self._norm is not None:
+            norm=self._norm
+        else:
+            norm=matplotlib.colors.Normalize(minmax[0],minmax[1])
 
         # add image to the axis
-        ax.imshow(np.flipud(a),cmap=self._cmap,norm=norm,interpolation='nearest')
+        ax.imshow(np.flipud(a),cmap=self._cmap,norm=norm,interpolation=self._interp)
 
         # turn the axis off to get a bare raster
         ax.axis('off')
@@ -800,7 +806,10 @@ class BaseNetCDF2Raster(object):
         '''
 
         # get the color norm from the min/max
-        norm=self._norm(min,max)
+        if self._norm is not None:
+            norm=self._norm
+        else:
+            norm=self._norm(min,max)
         
         # construct keyword arguments for ColorbarBase constructor
         kwargs={'norm':norm,'spacing':'proportional','orientation':'vertical',
@@ -1065,7 +1074,10 @@ class Vector2Raster(FireNetcdf2Raster):
         ax=fig.add_axes([0,0,1,1])
 
         minmax=self.getMinMax(istep)
-        norm=self._norm(minmax[0],minmax[1])
+        if self._norm is not None:
+            norm=self._norm
+        else:
+            norm=self._norm(minmax[0],minmax[1])
 
         ax.quiver(a[0],a[1],(a[0]**2+a[1]**2)**.5)
 
