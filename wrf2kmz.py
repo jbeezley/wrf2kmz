@@ -49,7 +49,7 @@ Dependencies:
 '''
 
 # to turn off reprojection support set this to True
-no_reprojection=True
+no_reprojection=False
 
 # force matplotlib's griddata interpolation
 # rather than custom fortran module
@@ -165,6 +165,7 @@ if not os.path.exists(os.path.join(_p,'reproject.so')):
             shutil.move('reproject.so',_p)
     except Exception as e:
         print 'Could not compile reprojection module.'
+        print 'Using matplotlib griddata for reprojection.'
 
 # try and import the reprojection module
 # fall back to griddata reprojection
