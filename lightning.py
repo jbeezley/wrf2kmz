@@ -44,11 +44,21 @@ width,height:        width/height of the subdomain in meters
 
 Creates lightning.kmz from the contents of wrfout.
 '''
-    parser=OptionParser(usage=usage)
-    parser.add_option('-s',action='store_true',dest='subdomain',help='Output only a subdomain',
-                      default=False)
+    #parser=OptionParser(usage=usage)
+    #parser.add_option('-s',action='store_true',dest='subdomain',help='Output only a subdomain',
+    #                  default=False)
     
-    (opts,args) = parser.parse_args()
+    #(opts,args) = parser.parse_args()
+    
+    class tmp(object):
+        pass
+
+    opts=tmp()
+    opts.subdomain=False
+    args=sys.argv[1:]
+    if '-s' in args:
+        args.remove('-s')
+        opts.subdomain=True
 
     subdomain=None
     if opts.subdomain:
