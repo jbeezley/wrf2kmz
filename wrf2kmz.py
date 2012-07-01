@@ -265,7 +265,8 @@ class BaseNetCDF2Raster(object):
                  displayDescription=None,displayColorbar=True, \
                  displayAlpha=180,name=None,minmax=None,accum=None, \
                  accumsumhours=None,norestriction=False,colorbarargs={}, \
-                 subdomain=None,cmapboundaries=None,interp='nearest'):
+                 subdomain=None,cmapboundaries=None,interp='nearest',
+                 derivedVar=False):
         '''
         Initialize a raster class object.
 
@@ -316,6 +317,7 @@ class BaseNetCDF2Raster(object):
                             in meters.
             interp          How to interpolate onto image ('nearest','bilinear','bicubic', etc).
                             See options in matplotlib imshow method.
+            derivedVar      If true, pass reading of the variable to subclass _readVarRaw method.
 
         '''
 
@@ -350,6 +352,7 @@ class BaseNetCDF2Raster(object):
         self._norestriction=norestriction
         self._colorbarargs=colorbarargs
         self._interp=interp
+        self._derivedVar=derivedVar
 
         if self._minmaxglobal:
             raise Exception("Global min-max computation not yet supported.")
@@ -474,9 +477,10 @@ class BaseNetCDF2Raster(object):
     def _readArray(self,istep=None,skipaccumsum=False):
         if istep is None and self._accum:
             raise Exception("Don't know how to read non-time step accumulation variables.")
-        a=self._readVar(self._var,istep)
+        a=self._readVar(self._var,istep,derived=self._derivedVar)
         if self._accum and istep > 0:
-            a=a-self._readVar(self._var,istep-1)
+            print 'reading %i' % istep
+            a=a-self._readVar(self._var,istep-1,derived=self._derivedVar)
         if self._accumsumhours and not skipaccumsum:
             iend=istep
             tend=self.getStepTime(istep)
@@ -487,22 +491,35 @@ class BaseNetCDF2Raster(object):
                 tstart=self.getStepTime(i)
                 istart=i
                 i=i-1
+            print 'reading steps %i to %i' % (istart,iend-1)
             for i in xrange(istart,iend):
                 a=a+self._readArray(istep=i,skipaccumsum=True)
         return a
                 
+    def _readVarRaw(self,varname,istep=None):
+        '''
+        Get data from file without any post-processing.  This function is present
+        to allow subclasses to perform it's own post-processing or use derived 
+        variables.
+        '''
+        if istep is None:
+            return self._file.variables[varname][:]
+        else:
+            return self._file.variables[varname][istep,...].squeeze()
 
-
-    def _readVar(self,var,istep=None):
+    def _readVar(self,var,istep=None,derived=False):
         '''
         Read data from the netCDF variable.  If istep is not None, then
         read a single time step.
         '''
         # read data
-        if istep is None:
-            a=var[:]
+        if isinstance(var,basestring) or derived:
+            a=self._readVarRaw(var,istep)
         else:
-            a=var[istep,...].squeeze()
+            if istep is None:
+                a=var[:]
+            else:
+                a=var[istep,...].squeeze()
 
         a=self.applyMask(a)
 
@@ -1392,6 +1409,7 @@ class ncKML(Kml):
         # get a list of steps to loop over (static variables only get generated once) 
         isteps=self._normalizeIsteps(raster,isteps)
         for i in isteps:
+            print 'Step %i' % i
             if raster.static:
                 tref=raster.timereference()
             else:
