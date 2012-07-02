@@ -236,7 +236,7 @@ class BaseNetCDF2Raster(object):
     '''
 
     # default matplotlib norm object (maps variable range to [0,1] for coloring)
-    defaultNorm=None
+    defaultNorm=matplotlib.colors.Normalize
 
     # default matplotlib colormap
     defaultcmap=pylab.cm.jet
@@ -267,7 +267,7 @@ class BaseNetCDF2Raster(object):
                  displayAlpha=180,name=None,minmax=None,accum=None, \
                  accumsumhours=None,norestriction=False,colorbarargs={}, \
                  subdomain=None,cmapboundaries=None,interp='nearest',
-                 derivedVar=False):
+                 derivedVar=False,slice3D=0):
         '''
         Initialize a raster class object.
 
@@ -319,21 +319,21 @@ class BaseNetCDF2Raster(object):
             interp          How to interpolate onto image ('nearest','bilinear','bicubic', etc).
                             See options in matplotlib imshow method.
             derivedVar      If true, pass reading of the variable to subclass _readVarRaw method.
+            slice3D         If this is a 3D var then slice at the given level (default 0).
 
         '''
-
-        # make sure the variable is 2D
-        ndim=var.ndim
-        if file.dimensions[var.dimensions[0]].isunlimited():
-            ndim=ndim-1
-        if ndim != 2:
-            raise Exception("Only 2D variables are supported.")
 
         # store arguments
         self._file=file
         self._var=var
+        
+        # make sure the variable is 2D
+        ndim=self._getVarNDim(var)
+        if ndim != 2 and ndim != 3:
+            raise Exception("Only 2D and 3D variables are supported.")
+
         self._minmax=minmax
-        self._norm=self.setToDefaultifNone(norm,self.defaultNorm)
+        self._norm=norm
         self._cmap=self.setToDefaultifNone(cmap,self.defaultcmap)
         self._formatter=self.setToDefaultifNone(formatter,self.defaultFormatter)
         self._minmaxglobal=self.setToDefaultifNone(minmaxglobal,self.defaultminmaxglobal)
@@ -354,6 +354,10 @@ class BaseNetCDF2Raster(object):
         self._colorbarargs=colorbarargs
         self._interp=interp
         self._derivedVar=derivedVar
+        if ndim == 3:
+            self._slice3D=slice3D
+        else:
+            self._slice3D=None
 
         if self._minmaxglobal:
             raise Exception("Global min-max computation not yet supported.")
@@ -433,7 +437,12 @@ class BaseNetCDF2Raster(object):
         imin=d.flatten().argmin()
         return np.unravel_index(imin,d.shape)
         
-    
+    def _getVarNDim(self,var):
+        ndim=var.ndim
+        if self._file.dimensions[var.dimensions[0]].isunlimited():
+            ndim=ndim-1
+        return ndim
+
     @staticmethod
     def setToDefaultifNone(value,default):
         '''
@@ -478,10 +487,10 @@ class BaseNetCDF2Raster(object):
     def _readArray(self,istep=None,skipaccumsum=False):
         if istep is None and self._accum:
             raise Exception("Don't know how to read non-time step accumulation variables.")
-        a=self._readVar(self._var,istep,derived=self._derivedVar)
+        a=self._readVar(self._var,istep,derived=self._derivedVar,ilev=self._slice3D)
         if self._accum and istep > 0:
             print 'reading %i' % istep
-            a=a-self._readVar(self._var,istep-1,derived=self._derivedVar)
+            a=a-self._readVar(self._var,istep-1,derived=self._derivedVar,ilev=self._slice3D)
         if self._accumsumhours and not skipaccumsum:
             iend=istep
             tend=self.getStepTime(istep)
@@ -496,31 +505,42 @@ class BaseNetCDF2Raster(object):
             for i in xrange(istart,iend):
                 a=a+self._readArray(istep=i,skipaccumsum=True)
         return a
-                
-    def _readVarRaw(self,varname,istep=None):
+    
+    def _privRead(self,var,istep,ilev):
+        if ilev is None:
+            if istep is None:
+                return var[:]
+            else:
+                return var[istep,...].squeeze()
+        else:
+            if istep is None:
+                return var[ilev,...].squeeze()
+            else:
+                return var[istep,ilev,...].squeeze()
+
+
+    def _readVarRaw(self,varname,istep=None,ilev=None):
         '''
         Get data from file without any post-processing.  This function is present
         to allow subclasses to perform it's own post-processing or use derived 
         variables.
         '''
-        if istep is None:
-            return self._file.variables[varname][:]
-        else:
-            return self._file.variables[varname][istep,...].squeeze()
+        
+        return self._privRead(self._file.variables[varname],istep,ilev)
 
-    def _readVar(self,var,istep=None,derived=False):
+    def _readVar(self,var,istep=None,derived=False,ilev=None):
         '''
         Read data from the netCDF variable.  If istep is not None, then
         read a single time step.
         '''
         # read data
         if isinstance(var,basestring) or derived:
-            a=self._readVarRaw(var,istep)
+            a=self._readVarRaw(var,istep,ilev)
         else:
-            if istep is None:
-                a=var[:]
-            else:
-                a=var[istep,...].squeeze()
+            ndim=self._getVarNDim(var)
+            if ndim == 3 and ilev is None:
+                ilev=self._slice3D
+            a=self._privRead(var,istep,ilev)
 
         a=self.applyMask(a)
 
@@ -789,7 +809,7 @@ class BaseNetCDF2Raster(object):
         if self._norm is not None:
             norm=self._norm
         else:
-            norm=matplotlib.colors.Normalize(minmax[0],minmax[1])
+            norm=self.defaultNorm(minmax[0],minmax[1])
 
         # add image to the axis
         ax.imshow(np.flipud(a),cmap=self._cmap,norm=norm,interpolation=self._interp)
@@ -826,7 +846,7 @@ class BaseNetCDF2Raster(object):
         if self._norm is not None:
             norm=self._norm
         else:
-            norm=self._norm(min,max)
+            norm=self.defaultNorm(min,max)
         
         # construct keyword arguments for ColorbarBase constructor
         kwargs={'norm':norm,'spacing':'proportional','orientation':'vertical',
@@ -1032,11 +1052,11 @@ class Vector2Raster(FireNetcdf2Raster):
         '''
         Return the staggering of a variable.  (Assumes only staggered in one axis)
         '''
-        if var.dimensions[-1][:-5] == '_stag':
+        if var.dimensions[-1][-5:] == '_stag':
             return 'x'
-        elif var.dimensions[-2][:-5] == '_stag':
+        elif var.dimensions[-2][-5:] == '_stag':
             return 'y'
-        elif var.dimensions[-3][:-5] == '_stag':
+        elif var.dimensions[-3][-5:] == '_stag':
             return 'z'
         else:
             return ''
@@ -1094,7 +1114,7 @@ class Vector2Raster(FireNetcdf2Raster):
         if self._norm is not None:
             norm=self._norm
         else:
-            norm=self._norm(minmax[0],minmax[1])
+            norm=self.defaultNorm(minmax[0],minmax[1])
 
         ax.quiver(a[0],a[1],(a[0]**2+a[1]**2)**.5)
 
