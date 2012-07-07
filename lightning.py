@@ -26,9 +26,9 @@ class GCLightningRaster(LightningRaster):
         kwargs['derivedVar']=True
         super(GCLightningRaster,self).__init__(*args,**kwargs)
 
-    def _readVarRaw(self,varname,istep):
-        a=self._file.variables['LPOS']
-        b=self._file.variables['LNEG']
+    def _readVarRaw(self,varname,istep,*args,**kwargs):
+        a=self._file.variables['LPOS'][istep,...]
+        b=self._file.variables['LNEG'][istep,...]
         a=a+b
         return a.squeeze()
 
@@ -40,7 +40,7 @@ class TotLightningRaster(LightningRaster):
         kwargs['derivedVar']=True
         super(TotLightningRaster,self).__init__(*args,**kwargs)
 
-    def _readVarRaw(self,varname,istep):
+    def _readVarRaw(self,varname,istep,*args,**kwargs):
         a=self._file.variables['LPOS'][istep,...]
         b=self._file.variables['LNEG'][istep,...]
         c=self._file.variables['LNEU'][istep,...]
@@ -102,17 +102,19 @@ Creates lightning.kmz from the contents of wrfout.
     else:
         file=args[0]
 
+    commonargs={'subdomain':subdomain,
+                'cmap':cmap,
+                'norm':norm,
+                'colorbarargs':cbarargs,
+                'interp':'sinc',
+                'dpi':1200}
+
     f=Dataset(file,'r')
-    lpos=LightningRaster(f,f.variables['LPOS'],name='+GC',accum=True,accumsumhours=3,subdomain=subdomain,
-                         cmap=cmap,norm=norm,colorbarargs=cbarargs,interp='sinc')
-    lneg=LightningRaster(f,f.variables['LNEG'],name='-GC',accum=True,accumsumhours=3,subdomain=subdomain,
-                         cmap=cmap,norm=norm,colorbarargs=cbarargs,interp='sinc')
-    lneu=LightningRaster(f,f.variables['LNEU'],name='IC',accum=True,accumsumhours=None,subdomain=subdomain,
-                         cmap=cmap,norm=norm,colorbarargs=cbarargs,interp='sinc')
-    lgc=GCLightningRaster(f,f.variables['LPOS'],name='GC',accum=True,accumsumhours=3,subdomain=subdomain,
-                          cmap=cmap,norm=norm,colorbarargs=cbarargs,interp='sinc')
-    ltot=TotLightningRaster(f,f.variables['LPOS'],name='Total',accum=True,accumsumhours=3,subdomain=subdomain,
-                         cmap=cmap,norm=norm,colorbarargs=cbarargs,interp='sinc')
+    lpos=LightningRaster(f,f.variables['LPOS'],name='+GC',accum=True,accumsumhours=3,**commonargs)
+    lneg=LightningRaster(f,f.variables['LNEG'],name='-GC',accum=True,accumsumhours=3,**commonargs)
+    lneu=LightningRaster(f,f.variables['LNEU'],name='IC',accum=True,accumsumhours=None,**commonargs)
+    lgc=GCLightningRaster(f,f.variables['LPOS'],name='GC',accum=True,accumsumhours=3,**commonargs)
+    ltot=TotLightningRaster(f,f.variables['LPOS'],name='Total',accum=True,accumsumhours=3,**commonargs)
     
     rain=ZeroMaskedRaster(f,f.variables['RAINNC'],name='RAINNC',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
