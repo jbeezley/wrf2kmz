@@ -14,6 +14,7 @@ logical,dimension(inx,iny)::m
 real,dimension(4)::xc,yc
 integer::inpolygon
 external::inpolygon
+real::xmin,xmax,ymin,ymax
 do i=2,inx
     if(xi(i).le.xi(i-1)) then
         ierr=2
@@ -42,21 +43,39 @@ do j=2,ny
             ierr=3
             return
         endif
+
+        xmin=min(lon(i-1,j-1),lon(i-1,j))
+        xmin=min(xmin,lon(i,j-1))
+        xmin=min(xmin,lon(i,j))
+        xmax=max(lon(i-1,j-1),lon(i-1,j))
+        xmax=max(xmax,lon(i,j-1))
+        xmax=max(xmax,lon(i,j))
+
+        ymin=min(lat(i-1,j-1),lat(i-1,j))
+        ymin=min(ymin,lat(i,j-1))
+        ymin=min(ymin,lat(i,j))
+        ymax=max(lat(i-1,j-1),lat(i-1,j))
+        ymax=max(ymax,lat(i,j-1))
+        ymax=max(ymax,lat(i,j))
+
         do j0=1,iny
-            if(yi(j0).lt.lat(i-1,j-1).and.yi(j0).lt.lat(i,j-1)) goto 10
-            if(yi(j0).gt.lat(i-1,j).and.yi(j0).gt.lat(i,j)) goto 20
+            if(yi(j0).lt.ymin) goto 10
+            if(yi(j0).gt.ymax) goto 20
             do i0=1,inx
-                if(m(i0,j0)) goto 30
-                if(xi(i0).lt.lon(i-1,j-1).and.xi(i0).lt.lon(i-1,j)) goto 30
-                if(xi(i0).gt.lon(i,j-1).and.xi(i0).gt.lon(i,j)) goto 20
-                
-                xc=(/lon(i-1,j-1),lon(i,j-1),lon(i,j),lon(i-1,j)/)
-                yc=(/lat(i-1,j-1),lat(i,j-1),lat(i,j),lat(i-1,j)/)
-                ic=inpolygon( xi(i0),yi(j0),xc,yc )
-                if(ic.gt.0) then 
-                    idx(1,i0,j0)=i+ip(ic)
-                    idx(2,i0,j0)=j+jp(ic)
-                    m(i0,j0)=.true.
+                !if(xi(i0).lt.xmin) goto 30
+                !if(xi(i0).gt.xmax) goto 20
+
+                if(.not. m(i0,j0) .and. &
+                   xi(i0).ge.xmin.and.xi(i0).le.xmax .and. &
+                   yi(j0).ge.ymin.and.yi(j0).le.ymax ) then
+                  xc=(/lon(i-1,j-1),lon(i,j-1),lon(i,j),lon(i-1,j)/)
+                  yc=(/lat(i-1,j-1),lat(i,j-1),lat(i,j),lat(i-1,j)/)
+                  ic=inpolygon( xi(i0),yi(j0),xc,yc )
+                  if(ic.gt.0) then 
+                      idx(1,i0,j0)=i+ip(ic)
+                      idx(2,i0,j0)=j+jp(ic)
+                      m(i0,j0)=.true.
+                  endif
                 endif
 
                 30 continue
