@@ -266,7 +266,7 @@ class BaseNetCDF2Raster(object):
                  displayAlpha=180,name=None,minmax=None,accum=None, \
                  accumsumhours=None,norestriction=False,colorbarargs={}, \
                  subdomain=None,cmapboundaries=None,interp='nearest',
-                 derivedVar=False,slice3D=0):
+                 derivedVar=False,slice3D=0,dpi=300):
         '''
         Initialize a raster class object.
 
@@ -319,6 +319,7 @@ class BaseNetCDF2Raster(object):
                             See options in matplotlib imshow method.
             derivedVar      If true, pass reading of the variable to subclass _readVarRaw method.
             slice3D         If this is a 3D var then slice at the given level (default 0).
+            dpi             Pixels per inch in the output image (default 300).
 
         '''
 
@@ -353,6 +354,7 @@ class BaseNetCDF2Raster(object):
         self._colorbarargs=colorbarargs
         self._interp=interp
         self._derivedVar=derivedVar
+        self._dpi=dpi
         if ndim == 3:
             self._slice3D=slice3D
         else:
@@ -488,7 +490,7 @@ class BaseNetCDF2Raster(object):
             raise Exception("Don't know how to read non-time step accumulation variables.")
         a=self._readVar(self._var,istep,derived=self._derivedVar,ilev=self._slice3D)
         if self._accum and istep > 0:
-            print 'reading %i' % istep
+            #print 'reading %i' % istep
             a=a-self._readVar(self._var,istep-1,derived=self._derivedVar,ilev=self._slice3D)
         if self._accumsumhours and not skipaccumsum:
             iend=istep
@@ -500,7 +502,7 @@ class BaseNetCDF2Raster(object):
                 tstart=self.getStepTime(i)
                 istart=i
                 i=i-1
-            print 'reading steps %i to %i' % (istart,iend-1)
+            #print 'reading steps %i to %i' % (istart,iend-1)
             for i in xrange(istart,iend):
                 a=a+self._readArray(istep=i,skipaccumsum=True)
         return a
@@ -516,7 +518,6 @@ class BaseNetCDF2Raster(object):
                 return var[ilev,...].squeeze()
             else:
                 return var[istep,ilev,...].squeeze()
-
 
     def _readVarRaw(self,varname,istep=None,ilev=None):
         '''
@@ -771,14 +772,13 @@ class BaseNetCDF2Raster(object):
         '''
         return 'default'
     
-    def getRasterFromArray(self,a,istep=None,hsize=3,dpi=300):
+    def getRasterFromArray(self,a,istep=None,hsize=3):
         '''
         Returns a string containing a png psuedocolor image of the array a.
 
         Keyword arguments:
 
             hsize:  integer, width of the image in inches
-            dpi:    integer, dots per inch of the image
         '''
 
         lon,lat=self.readCoordinates(istep)
@@ -820,7 +820,7 @@ class BaseNetCDF2Raster(object):
         im=StringIO()
 
         # save and close the figure
-        fig.savefig(im,dpi=dpi,format='png',transparent=True)
+        fig.savefig(im,dpi=self._dpi,format='png',transparent=True)
         pylab.close(fig)
 
         return im.getvalue()
@@ -1429,7 +1429,7 @@ class ncKML(Kml):
         # get a list of steps to loop over (static variables only get generated once) 
         isteps=self._normalizeIsteps(raster,isteps)
         for i in isteps:
-            print 'Step %i' % i
+            #print 'Step %i' % i
             if raster.static:
                 tref=raster.timereference()
             else:
