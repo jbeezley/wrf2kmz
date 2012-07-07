@@ -106,8 +106,8 @@ Creates lightning.kmz from the contents of wrfout.
                 'cmap':cmap,
                 'norm':norm,
                 'colorbarargs':cbarargs,
-                'interp':'sinc',
-                'dpi':1200}
+                'interp':'sinc'}
+                #'dpi':1200}
 
     f=Dataset(file,'r')
     lpos=LightningRaster(f,f.variables['LPOS'],name='+GC',accum=True,accumsumhours=3,**commonargs)
