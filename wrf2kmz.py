@@ -55,6 +55,9 @@ no_reprojection=True
 # rather than custom fortran module
 use_matplotlib_reproject=True
 
+# use io caching (may help performance, but can use a lot of memory)
+use_io_caching=True
+
 # standard library imports
 import sys
 import os
@@ -354,6 +357,7 @@ class BaseNetCDF2Raster(object):
         self._interp=interp
         self._derivedVar=derivedVar
         self._dpi=dpi
+        self._ioCache={}
         if ndim == 3:
             self._slice3D=slice3D
         else:
@@ -525,7 +529,7 @@ class BaseNetCDF2Raster(object):
     def _readVarRaw(self,varname,istep=None,ilev=None):
         '''
         Get data from file without any post-processing.  This function is present
-        to allow subclasses to perform it's own post-processing or use derived 
+        to allow subclasses to perform it's own post-processing or use derive
         variables.
         '''
         
@@ -536,6 +540,12 @@ class BaseNetCDF2Raster(object):
         Read data from the netCDF variable.  If istep is not None, then
         read a single time step.
         '''
+        # check cache
+        if self._ioCache.has_key(var):
+            cvar=self._ioCache[var]
+            if cvar.has_key(istep):
+                return cvar[istep]
+        # print 'File IO %s %s' % (str(var),str(istep))
         # read data
         if isinstance(var,basestring) or derived:
             a=self._readVarRaw(var,istep,ilev)
@@ -552,7 +562,16 @@ class BaseNetCDF2Raster(object):
             raise MaskedArrayException
         
         a=a.filled()
+
+        if use_io_caching:
+            if not self._ioCache.has_key(var):
+                self._ioCache[var]={}
+            self._ioCache[var][istep]=a
+
         return a
+
+    def clearCache(self):
+        self._ioCache={}
 
     def applyMask(self,a):
         # convert to a masked array
