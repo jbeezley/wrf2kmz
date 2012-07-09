@@ -331,7 +331,6 @@ class BaseNetCDF2Raster(object):
         ndim=self._getVarNDim(var)
         if ndim != 2 and ndim != 3:
             raise Exception("Only 2D and 3D variables are supported.")
-
         self._minmax=minmax
         self._norm=norm
         self._cmap=self.setToDefaultifNone(cmap,self.defaultcmap)
@@ -360,8 +359,8 @@ class BaseNetCDF2Raster(object):
         else:
             self._slice3D=None
 
-        if self._minmaxglobal:
-            raise Exception("Global min-max computation not yet supported.")
+        #if self._minmaxglobal:
+        #    raise Exception("Global min-max computation not yet supported.")
         
         # get the number of time steps in this file from the unlimited dimension
         # of the netcdf file
@@ -404,7 +403,7 @@ class BaseNetCDF2Raster(object):
         return self._cmap.name
 
     @property
-    def minmaxgloba(self):
+    def minmaxglobal(self):
         return self._minmaxglobal
 
     @property
@@ -486,6 +485,10 @@ class BaseNetCDF2Raster(object):
         return b
 
     def _readArray(self,istep=None,skipaccumsum=False):
+        #from traceback import print_stack
+        #print '*'*40
+        #print istep
+        #print_stack()
         if istep is None and self._accum:
             raise Exception("Don't know how to read non-time step accumulation variables.")
         a=self._readVar(self._var,istep,derived=self._derivedVar,ilev=self._slice3D)
@@ -657,7 +660,8 @@ class BaseNetCDF2Raster(object):
             minmax=self._minmax
         else:
             a=self._readArray(istep)
-            minmax=self.arrayMinMax(a)
+            self._minmax=self.arrayMinMax(a)
+            minmax=self._minmax
         return minmax
     
     @classmethod
@@ -946,6 +950,8 @@ class FireNetcdf2Raster(WRFNetcdf2Raster):
     '''
 
     def __init__(self,*args,**kwargs):
+        if not kwargs.has_key('minmaxglobal'):
+            kwargs['minmaxglobal']=True
         super(FireNetcdf2Raster,self).__init__(*args,**kwargs)
 
         # In addition to standard properties we add srx/sry, the subgrid refinement ratios
@@ -964,7 +970,7 @@ class FireNetcdf2Raster(WRFNetcdf2Raster):
         '''
         return var.dimensions[-1][-8:] == '_subgrid'
 
-    def _readArray(self,istep=0,**kwargs):
+    def _readArray(self,istep=None,**kwargs):
         '''
         Same as base class _readArray, but ignores the extra space that is present
         for fire grid variables.
@@ -1210,7 +1216,7 @@ class FireRasterFile(object):
 
     # define display styles for individual variables
     _varClasses={
-        'FGRNHFX':(LogScaleRaster,{'minmax':(1,2)}),
+        'FGRNHFX':(LogScaleRaster,{}),
         'GRNHFX':(LogScaleRaster,{}),
         'FLINEINT':(NegativeMaskedRaster,{}),
         'FLINEINT2':(NegativeMaskedRaster,{}),
@@ -1407,6 +1413,7 @@ class ncKML(Kml):
         description=raster.displayDescription
         alpha=raster.displayAlpha
         colorbar=raster.displayColorbar
+        colorbardone=False
         
         # This can take a while so tell the use what is going on.
         message('Creating ground overlay from %s' % raster.getName())
@@ -1461,7 +1468,12 @@ class ncKML(Kml):
             g.icon.href=fname
             g.visibility=f.visibility
             
-            if colorbar:
+            if colorbar and not (colorbardone and raster.minmaxglobal):
+                #print 'computing colorbar at step %i' % i
+                #print raster.minmaxglobal
+                if raster.minmaxglobal:
+                    tref=raster.timereference()
+
                 # generate a colorbar
                 img=raster.getColorbar(i)
 
@@ -1483,6 +1495,8 @@ class ncKML(Kml):
                 g.color=Color.rgb(255,255,255,a=calpha)
                 g.visibility=f.visibility
                 g.icon.href=fname
+
+                colorbardone=True
         return f
 
     def polygonFromContour(self,raster,name=None,description=None, \
