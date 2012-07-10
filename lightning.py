@@ -121,7 +121,7 @@ Creates lightning.kmz from the contents of wrfout.
     snow=ZeroMaskedRaster(f,f.variables['SNOWH'],name='SNOWH',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
 
-    wind=Vector2Raster(f,f.variables['U'],f.variables['V'])
+    wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='wind')
 
 
     n=ncKML()
