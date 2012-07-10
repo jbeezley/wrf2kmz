@@ -362,6 +362,9 @@ class BaseNetCDF2Raster(object):
             self._slice3D=slice3D
         else:
             self._slice3D=None
+        
+        if self._accum:
+            self._minmaxglobal=False
 
         #if self._minmaxglobal:
         #    raise Exception("Global min-max computation not yet supported.")
@@ -967,6 +970,7 @@ class FireNetcdf2Raster(WRFNetcdf2Raster):
     super class WRFNetcdf2Raster, but contains additional code for working with subgrid 
     variables.  General WRF files/variables should work with this class as well.
     '''
+    defaultminmaxglobal=True
 
     def __init__(self,*args,**kwargs):
         if not kwargs.has_key('minmaxglobal'):
