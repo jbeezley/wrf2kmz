@@ -1069,9 +1069,9 @@ class Vector2Raster(FireNetcdf2Raster):
         stag:  stag 'x' or 'y' indicates staggering, otherwise do nothing
         '''
         if stag.lower() == 'y':
-            return (a[:-1,:] + a[1:,:])/2.
+            return (a[...,:-1,:] + a[...,1:,:])/2.
         elif stag.lower() == 'x':
-            return (a[:,:-1] + a[:,1:])/2.
+            return (a[...,:,:-1] + a[...,:,1:])/2.
         else:
             return a
 
