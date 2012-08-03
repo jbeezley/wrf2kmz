@@ -56,8 +56,8 @@ class WindSpeedRaster(ZeroMaskedRaster):
         super(WindSpeedRaster,self).__init__(*args,**kwargs)
 
     def _readVarRaw(self,varname,istep,*args,**kwargs):
-        a=self._file.variables['U'][istep,0,...]
-        b=self._file.variables['V'][istep,0,...]
+        a=self._file.variables['U'][istep,0,:,:-1]
+        b=self._file.variables['V'][istep,0,:-1,:]
         a=(a**2.+b**2.)**.5
         return a.squeeze()
 
