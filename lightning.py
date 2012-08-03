@@ -50,6 +50,20 @@ class TotLightningRaster(LightningRaster):
     def _getDescription(self):
         return 'Total Ground Lightning Density'
 
+class WindSpeedRaster(ZeroMaskedRaster):
+    def __init__(self,*args,**kwargs):
+        kwargs['derivedVar']=True
+        super(WindSpeedRaster,self).__init__(*args,**kwargs)
+
+    def _readVarRaw(self,varname,istep,*args,**kwargs):
+        a=self._file.variables['U'][istep,0,...]
+        b=self._file.variables['V'][istep,0,...]
+        a=(a**2.+b**2.)**.5
+        return a.squeeze()
+
+    def _getDescription(self):
+        return 'Wind Speed'
+
 def test():
     subdomain={'centerlon':-80.874129,
                'centerlat':42.181647,
@@ -122,6 +136,7 @@ Creates lightning.kmz from the contents of wrfout.
                           interp='sinc')
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='wind')
+    winds=WindSpeedRaster(f,f.variables['U'],name='wind',subdomain=subdomain,interp='sinc')
 
 
     n=ncKML()
