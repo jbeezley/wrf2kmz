@@ -1042,7 +1042,7 @@ class Vector2Raster(FireNetcdf2Raster):
     Converts vector data to arrow plots using matplotlib's quiver.
     '''
 
-    def __init__(self,file,varx,vary,numarrows=(25,25),**kwargs):
+    def __init__(self,file,varx,vary,numarrows=(25,25),usebarbs=False,**kwargs):
         '''
         Constructor.  Differs from superclass constructor by taking two variables
         rather than one for the vector components.
@@ -1058,6 +1058,7 @@ class Vector2Raster(FireNetcdf2Raster):
         self._varx=varx
         self._vary=vary
         self._numarrows=numarrows
+        self._usebarbs=usebarbs
         super(Vector2Raster,self).__init__(file,varx,**kwargs)
 
     @classmethod
@@ -1143,8 +1144,11 @@ class Vector2Raster(FireNetcdf2Raster):
             norm=self._norm
         else:
             norm=self.defaultNorm(minmax[0],minmax[1])
-
-        ax.quiver(a[0],a[1],(a[0]**2+a[1]**2)**.5)
+        
+        if not self._usebarbs:
+            ax.quiver(a[0],a[1],(a[0]**2+a[1]**2)**.5)
+        else:
+            ax.barbs(a[0],a[1],(a[0]**2+a[1]**2)**.5)
 
         ax.axis('off')
         im=StringIO()
@@ -1246,7 +1250,7 @@ class FireRasterFile(object):
         'NFUEL_CAT':(ZeroMaskedRaster,{'static':True}),
         'UF':(FireNetcdf2Raster,{'cmap':my_cmap,'minmax':(-5,5)}),  # change colormap and use a static minmax
         'VF':(FireNetcdf2Raster,{'cmap':pylab.cm.hsv,'minmax':(-5,5)}),
-        ('UF','VF'):(Vector2Raster,{})
+        ('UF','VF'):(Vector2Raster,{'usebarbs':True})
     }
 
     # default display style for variables not listed above
