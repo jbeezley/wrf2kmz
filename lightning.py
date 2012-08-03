@@ -56,8 +56,12 @@ class WindSpeedRaster(ZeroMaskedRaster):
         super(WindSpeedRaster,self).__init__(*args,**kwargs)
 
     def _readVarRaw(self,varname,istep,*args,**kwargs):
-        a=self._file.variables['U'][istep,0,:,:-1]
-        b=self._file.variables['V'][istep,0,:-1,:]
+        if istep == None:
+            istep=0
+        a=self._file.variables['U'][istep,0,...].squeeze()
+        a=.5*(a[:,1:]+a[:,:-1])
+        b=self._file.variables['V'][istep,0,...].squeeze()
+        b=.5*(b[1:,:]+b[:-1,:])
         a=(a**2.+b**2.)**.5
         return a.squeeze()
 
@@ -136,7 +140,7 @@ Creates lightning.kmz from the contents of wrfout.
                           interp='sinc')
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='wind')
-    winds=WindSpeedRaster(f,f.variables['U'],name='wind',subdomain=subdomain,interp='sinc')
+    winds=WindSpeedRaster(f,f.variables['U'],name='windspeed',subdomain=subdomain,interp='sinc')
 
 
     n=ncKML()
@@ -149,6 +153,7 @@ Creates lightning.kmz from the contents of wrfout.
     n.groundOverlayFromRaster(rain)
     n.groundOverlayFromRaster(snow)
     n.groundOverlayFromRaster(wind)
+    n.groundOverlayFromRaster(winds)
     n.savekmz('lightning.kmz')
 
 if __name__ == '__main__':
