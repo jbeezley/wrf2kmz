@@ -494,7 +494,7 @@ class BaseNetCDF2Raster(object):
     
     def _readArrayAll(self):
         b=self._readArray(istep=0)
-        a=np.zeros((self._nstep,)+s)
+        a=np.zeros((self._nstep,)+b.shape)
         a[0,...]=b
         for i in xrange(1,self._nstep):
             a[i,...]=self._readArray(istep=i)
