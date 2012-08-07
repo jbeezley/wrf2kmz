@@ -494,10 +494,6 @@ class BaseNetCDF2Raster(object):
     
     def _readArrayAll(self):
         b=self._readArray(istep=0)
-        if isinstance(b,tuple) or isinstance(b,list):
-            s=b[0].shape
-        else:
-            s=b.shape
         a=np.zeros((self._nstep,)+s)
         a[0,...]=b
         for i in xrange(1,self._nstep):
@@ -1103,7 +1099,18 @@ class Vector2Raster(FireNetcdf2Raster):
             return 'z'
         else:
             return ''
-    
+    def _readArrayAll(self):
+        b=self._readArray(istep=0)
+        a1=np.zeros((self._nstep,)+b[0].shape)
+        a1[0,...]=b[0]
+        a2=np.zeros((self._nstep,)+b[1].shape)
+        a2[0,...]=b[1]
+        for i in xrange(1,self._nstep):
+            b=self._readArray(istep=i)
+            a1[i,...]=b[0]
+            a2[i,...]=b[1]
+        return (a1,a2)
+
     def _readArray(self,istep=None):
         '''
         Vector readArray returns tuple of both coordinates of vector data.
