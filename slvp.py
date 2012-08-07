@@ -49,7 +49,7 @@ def compute_seaprs_from_derived(z,t,p,q):
     for j in xrange(ny):
         for i in xrange(nx):
             if not bad[j,i]:
-                klo=max(level[i,j]-2,0)
+                klo=max(level[j,i]-2,0)
                 khi=min(klo+1,nz-2)
 
                 if klo == khi:
