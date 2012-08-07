@@ -491,6 +491,14 @@ class BaseNetCDF2Raster(object):
         #a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]=b
         self._gref[istep]=bds
         return b
+    
+    def _readArrayAll(self):
+        b=self._readArray(istep=0)
+        a=np.zeros((self._nstep,)+b.shape)
+        a[0,...]=b
+        for i in xrange(1,self._nstep):
+            a[i,...]=self._readArray(istep=i)
+        return a
 
     def _readArray(self,istep=None,skipaccumsum=False):
         #from traceback import print_stack
@@ -678,7 +686,7 @@ class BaseNetCDF2Raster(object):
             minmax=self._minmax
         elif self._minmaxglobal:
             if self._minmax is None:
-                a=self._readArray()
+                a=self._readArrayAll()
                 self._minmax=self.arrayMinMax(a)
             minmax=self._minmax
         else:
