@@ -2,6 +2,7 @@
 import sys
 from netCDF4 import Dataset
 from wrf2kmz import *
+from slvp import compute_seaprs
 
 from matplotlib import colors,cm
 
@@ -67,6 +68,23 @@ class WindSpeedRaster(ZeroMaskedRaster):
 
     def _getDescription(self):
         return 'Wind Speed'
+
+class SeaPressureRaster(ZeroMaskedRaster):
+    def __init__(self,*args,**kwargs):
+        kwargs['derivedVar']=True
+        super(SeaPressureRaster,self).__init__(*args,**kwargs)
+
+    def _readVarRaw(self,varname,istep,*args,**kwargs):
+        if istep == None:
+            istep=0
+        p=self._file.variables['P'][istep,...]
+        pb=self._file.variables['PB'][istep,...]
+        ph=self._file.variables['PH'][istep,...]
+        phb=self._file.variables['PHB'][istep,...]
+        t=self._file.variables['T'][istep,...]
+        qv=self._file.variables['QVAPOR'][istep,...]
+
+        return compute_seaprs(p,pb,ph,phb,t,qv)
 
 def test():
     subdomain={'centerlon':-80.874129,
@@ -140,7 +158,8 @@ Creates lightning.kmz from the contents of wrfout.
                           interp='sinc')
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='wind',usebarbs=True,barbslength=4)
-    winds=WindSpeedRaster(f,f.variables['U'],name='windspeed',subdomain=subdomain,interp='sinc')
+    winds=WindSpeedRaster(f,f.variables['U'],name='Wind Speed',subdomain=subdomain,interp='sinc')
+    slvp=SeaPressureRaster(f,f.variables['P'],name='Sea Level Pressure',subdomain=subdomain,interp='sinc')
 
 
     n=ncKML()
@@ -154,6 +173,7 @@ Creates lightning.kmz from the contents of wrfout.
     n.groundOverlayFromRaster(snow)
     n.groundOverlayFromRaster(wind)
     n.groundOverlayFromRaster(winds)
+    n.groundOverlayFromRaster(slvp)
     n.savekmz('lightning.kmz')
 
 if __name__ == '__main__':
