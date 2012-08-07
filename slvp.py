@@ -1,4 +1,6 @@
 import numpy as np
+import slvpf
+compute_seaprs_from_derived=slvpf.slvp.compute_seaprs_from_derived
 
 def compute_t(t,p):
     return (t+300.)*(p/100000.)**0.287
@@ -16,9 +18,13 @@ def compute_seaprs(p,pb,ph,phb,t,qv):
     z=compute_height(ph)
     t=compute_t(t,p)
 
-    return compute_seaprs_from_derived(z,t,p,qv)
+    slvp,mask=compute_seaprs_from_derived(z.T,t.T,p.T,qv.T)
+    slvp=np.ma.array(slvp.T)
+    slvp.mask=(mask.T != 0)
+    slvp.set_fill_value(np.nan)
+    return slvp
 
-def compute_seaprs_from_derived(z,t,p,q):
+def compute_seaprs_from_derived_py(z,t,p,q):
 
     R=287.04
     G=9.81
@@ -36,7 +42,7 @@ def compute_seaprs_from_derived(z,t,p,q):
     for j in xrange(ny):
         for i in xrange(nx):
             for k in xrange(nz):
-                if p[k,j,i] < p[1,j,i] - PCONST:
+                if p[k,j,i] < p[0,j,i] - PCONST:
                     level[j,i] = k
                     break
 
@@ -73,9 +79,9 @@ def compute_seaprs_from_derived(z,t,p,q):
                 sea_level_pressure[j,i]=p[0,j,i] * np.exp(2.*G*z[0,j,i]/ (R*(t_sea_level[j,i]+t_surf[j,i])))
     sea_level_pressure=np.ma.array(sea_level_pressure)
     sea_level_pressure.mask=(bad != 0)
-    sea_level_pressure.set_fill_value=np.nan
+    sea_level_pressure.set_fill_value(np.nan)
 
-    return sea_level_pressure
+    return sea_level_pressure,bad
 
 if __name__ == "__main__":
     import sys
