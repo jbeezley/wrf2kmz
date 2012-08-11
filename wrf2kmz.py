@@ -1051,7 +1051,8 @@ class Vector2Raster(FireNetcdf2Raster):
     Converts vector data to arrow plots using matplotlib's quiver.
     '''
 
-    def __init__(self,file,varx,vary,numarrows=(25,25),usebarbs=False,barbslength=5,**kwargs):
+    def __init__(self,file,varx,vary,numarrows=(25,25),usebarbs=False,barbslength=5,
+                 barbswidth=.5,**kwargs):
         '''
         Constructor.  Differs from superclass constructor by taking two variables
         rather than one for the vector components.
@@ -1069,6 +1070,8 @@ class Vector2Raster(FireNetcdf2Raster):
         self._numarrows=numarrows
         self._usebarbs=usebarbs
         self._barbslength=barbslength
+        self._barbswidth=barbswidth
+
         super(Vector2Raster,self).__init__(file,varx,**kwargs)
 
     @classmethod
@@ -1169,7 +1172,7 @@ class Vector2Raster(FireNetcdf2Raster):
         if not self._usebarbs:
             ax.quiver(a[0],a[1],(a[0]**2+a[1]**2)**.5)
         else:
-            ax.barbs(a[0],a[1],(a[0]**2+a[1]**2)**.5,length=self._barbslength)
+            ax.barbs(a[0],a[1],(a[0]**2+a[1]**2)**.5,length=self._barbslength,linewidth=self._barbswidth)
 
         ax.axis('off')
         im=StringIO()

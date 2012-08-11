@@ -161,7 +161,7 @@ Creates lightning.kmz from the contents of wrfout.
                           interp='sinc')
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='Wind',usebarbs=True,barbslength=3,
-                       displayDescription='Wind')
+                       barbswidth=.5,displayDescription='Wind')
     winds=WindSpeedRaster(f,f.variables['U'],name='Wind Speed',subdomain=subdomain,interp='sinc')
     slvp=SeaPressureRaster(f,f.variables['P'],name='Sea Level Pressure',subdomain=subdomain,interp='sinc')
 
