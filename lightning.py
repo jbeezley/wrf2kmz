@@ -33,7 +33,7 @@ class GCLightningRaster(LightningRaster):
         a=a+b
         return a.squeeze()
 
-    def _getDescription(self):
+    def getDescription(self):
         return 'GC'
 
 class TotLightningRaster(LightningRaster):
@@ -48,7 +48,7 @@ class TotLightningRaster(LightningRaster):
         a=a+b+c
         return a.squeeze()
 
-    def _getDescription(self):
+    def getDescription(self):
         return 'Total Ground Lightning Density'
 
 class WindSpeedRaster(ZeroMaskedRaster):
@@ -66,7 +66,7 @@ class WindSpeedRaster(ZeroMaskedRaster):
         a=(a**2.+b**2.)**.5
         return a.squeeze()
 
-    def _getDescription(self):
+    def getDescription(self):
         return 'Wind Speed'
 
 class SeaPressureRaster(ZeroMaskedRaster):
@@ -86,7 +86,7 @@ class SeaPressureRaster(ZeroMaskedRaster):
 
         return compute_seaprs(p,pb,ph,phb,t,qv)
 
-    def _getDescription(self):
+    def getDescription(self):
         return 'Sea level pressure'
 
 def test():
