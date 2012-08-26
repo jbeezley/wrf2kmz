@@ -1192,6 +1192,7 @@ class Vector2Raster(FireNetcdf2Raster):
             ax.barbs(a[0],a[1],(a[0]**2+a[1]**2)**.5,length=self._barbslength,linewidth=self._barbswidth)
 
         ax.axis('off')
+        ax.axis('tight')
         im=StringIO()
 
         fig.savefig(im,dpi=dpi,format='png',transparent=True)
