@@ -1194,9 +1194,9 @@ class Vector2Raster(FireNetcdf2Raster):
             norm=self.defaultNorm(minmax[0],minmax[1])
         
         if not self._usebarbs:
-            ax.quiver(a[0],a[1],(a[0]**2+a[1]**2)**.5)
+            ax.quiver(a[0],a[1],(a[0]**2+a[1]**2)**.5,norm=norm)
         else:
-            ax.barbs(a[0],a[1],(a[0]**2+a[1]**2)**.5,length=self._barbslength,linewidth=self._barbswidth)
+            ax.barbs(a[0],a[1],(a[0]**2+a[1]**2)**.5,length=self._barbslength,linewidth=self._barbswidth,norm=norm)
 
         ax.axis('off')
         ax.axis('tight')
