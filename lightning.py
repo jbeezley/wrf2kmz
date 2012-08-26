@@ -190,7 +190,7 @@ Creates lightning.kmz from the contents of wrfout.
                           interp='sinc')
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='Wind',usebarbs=True,barbslength=4,
-                       barbswidth=.5,displayDescription='Wind',subdomain=subdomain)
+                       barbswidth=.5,displayDescription='Wind',subdomain=subdomain,displayAlpha=255)
     winds=WindSpeedRaster(f,f.variables['U'],name='Wind Speed',subdomain=subdomain,interp='sinc')
     slvp=SeaPressureRaster(f,f.variables['P'],name='Sea Level Pressure',subdomain=subdomain,interp='sinc')
     relhum=RelHumRaster(f,f.variables['Q2'],name='Relative Humidity',subdomain=subdomain,interp='sinc')
