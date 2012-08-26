@@ -8,6 +8,7 @@ from matplotlib import colors,cm
 
 #clist=['white','#CCFF00','#66FF00',]
 bounds=[0,1,5,10,25,50,100,250,500,1000]
+mbound=[0,1,2, 3, 4, 5,  6,  7,  8,9,10]
 
 basecmap=cm.jet
 clist=[]
@@ -18,6 +19,15 @@ for i in np.linspace(0,basecmap.N,N):
 cmap=colors.ListedColormap(clist)
 norm=colors.BoundaryNorm(bounds,cmap.N)
 cbarargs={'boundaries':bounds,'ticks':bounds,'spacing':'uniform'}
+
+mlist=[]
+N=len(mbound)-1
+for i in np.linspace(0,basecmap.N,N):
+    mlist.append(basecmap(float(i)/basecmap.N)[:-1])
+
+mmap=colors.ListedColormap(mlist)
+mnorm=colors.BoundaryNorm(mbound,mmap.N)
+mbarargs={'boundaries':mbound,'ticks':mbound,'spacing':'uniform'}
 
 class LightningRaster(ZeroMaskedRaster):
     pass
@@ -147,9 +157,14 @@ Creates lightning.kmz from the contents of wrfout.
                 'colorbarargs':cbarargs,
                 'interp':'sinc'}
                 #'dpi':1200}
+    mcommonargs={'subdomain':subdomain,
+                'cmap':mmap,
+                'norm':mnorm,
+                'colorbarargs':mbarargs,
+                'interp':'sinc'}
 
     f=Dataset(file,'r')
-    lpos=LightningRaster(f,f.variables['LPOS'],name='+GC',accum=True,accumsumhours=3,**commonargs)
+    lpos=LightningRaster(f,f.variables['LPOS'],name='+GC',accum=True,accumsumhours=3,**mcommonargs)
     lneg=LightningRaster(f,f.variables['LNEG'],name='-GC',accum=True,accumsumhours=3,**commonargs)
     lneu=LightningRaster(f,f.variables['LNEU'],name='IC',accum=True,accumsumhours=None,**commonargs)
     lgc=GCLightningRaster(f,f.variables['LPOS'],name='GC',accum=True,accumsumhours=3,**commonargs)
