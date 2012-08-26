@@ -3,6 +3,7 @@ import sys
 from netCDF4 import Dataset
 from wrf2kmz import *
 from slvp import compute_seaprs
+from relhum import relative_humidity
 
 from matplotlib import colors,cm
 
@@ -99,6 +100,19 @@ class SeaPressureRaster(ZeroMaskedRaster):
     def getDescription(self):
         return 'Sea level pressure'
 
+class RelHumRaster(ZeroMaskedRaster):
+    def __init__(self,*args,**kwargs):
+        kwargs['derivedVar']=True
+        super(RelHumRaster,self).__init__(*args,**kwargs)
+
+    def _readVarRaw(self,varname,istep,*args,**kwargs):
+        if istep == None:
+            istep=0
+        t2=self._file.variables['T2'][istep,...]
+        q2=self._file.variables['Q2'][istep,...]
+        psfc=self._file.variables['PSFC'][istep,...]
+        return relative_humidity(t2,q2,psfc)
+
 def test():
     subdomain={'centerlon':-80.874129,
                'centerlat':42.181647,
@@ -179,6 +193,7 @@ Creates lightning.kmz from the contents of wrfout.
                        barbswidth=.5,displayDescription='Wind',subdomain=subdomain)
     winds=WindSpeedRaster(f,f.variables['U'],name='Wind Speed',subdomain=subdomain,interp='sinc')
     slvp=SeaPressureRaster(f,f.variables['P'],name='Sea Level Pressure',subdomain=subdomain,interp='sinc')
+    relhum=RelHumRaster(f,f.variables['Q2'],name='Relative Humidity',subdomain=subdomain,interp='sinc')
 
 
     n=ncKML()
@@ -193,6 +208,7 @@ Creates lightning.kmz from the contents of wrfout.
     n.groundOverlayFromRaster(wind)
     n.groundOverlayFromRaster(winds)
     n.groundOverlayFromRaster(slvp)
+    n.groundOverlayFromRaster(relhum)
     n.savekmz('lightning.kmz')
 
 if __name__ == '__main__':
