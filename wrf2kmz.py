@@ -1159,6 +1159,10 @@ class Vector2Raster(FireNetcdf2Raster):
         '''
         Similar to superclass method, but generates a quiver plot.
         '''
+        if self._subdomain:
+            idx=self._subdomain
+            a=(a[0][idx[0]:idx[1]+1,idx[2]:idx[3]+1],
+               a[1][idx[0]:idx[1]+1,idx[2]:idx[3]+1])
         a=( self.reduceVector(a[0],self._numarrows), self.reduceVector(a[1],self._numarrows))
         fig=pylab.figure(figsize=(hsize,hsize*float(a[0].shape[0])/a[0].shape[1]))
         ax=fig.add_axes([0,0,1,1])
@@ -1186,7 +1190,7 @@ class Vector2Raster(FireNetcdf2Raster):
         '''
         Georeferencing without support of restricted arrays.
         '''
-        lon,lat=self.readCoordinates(istep)
+        lon,lat=self.readCoordinates(istep=istep,idx=self._subdomain)
         return {'west':lon.min(),'east':lon.max(),'south':lat.min(),'north':lat.max()}
 
     def getCoordinates(self):
