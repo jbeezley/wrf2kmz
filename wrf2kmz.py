@@ -214,7 +214,8 @@ def globalReprojectIdx(tag,lon,lat):
         _globalReprojectionIdx[tag]=(idx,xi,yi)
     return _globalReprojectionIdx[tag][0]
 
-def getReprojectionGeoref(tag):
+def getReprojectionGeoref(tag,lon,lat):
+    globalReprojectIdx(tag,lon,lat)
     if _globalReprojectionIdx.has_key(tag):
         ix,iy=_globalReprojectionIdx[tag][1:]
         return ix,iy
@@ -624,8 +625,13 @@ class BaseNetCDF2Raster(object):
         c=self.getCoordinates()
         if c is None:
             raise Exception("Could not find coordinate array for %s" % self.getName())
+
+        # read coordinate arrays from the file
+        lon=self._file.variables[c[0]][0,:,:]
+        lat=self._file.variables[c[1]][0,:,:]
+    
         
-        ix,iy=getReprojectionGeoref(self._getTag())
+        ix,iy=getReprojectionGeoref(self._getTag(),lon,lat)
         if ix is not None and iy is not None and not orig:
             if idx is None:
                 lon=ix
@@ -634,10 +640,11 @@ class BaseNetCDF2Raster(object):
                 lon=ix[idx[2]:idx[3]+1]
                 lat=iy[idx[0]:idx[1]+1]
         else:
+        
             # read coordinate arrays from the file
             lon=self._file.variables[c[0]]
             lat=self._file.variables[c[1]]
-    
+
             # if no index bounds given, then return the full arrays
             if idx is None:
                 idx=(0,lon.shape[-2]-1,0,lon.shape[-1]-1)
@@ -1513,8 +1520,8 @@ class ncKML(Kml):
             
             try:
                 # skipped time steps where all of the data is masked
-                gref=raster.georeference(i)
                 img=raster.getRaster(i)
+                gref=raster.georeference(i)
             except MaskedArrayException:
                 message('Skipping %i'%i)
                 continue
