@@ -718,8 +718,13 @@ class BaseNetCDF2Raster(object):
             minmax=self._minmax
         return minmax
     
-    @classmethod
-    def arrayMinMax(cls,a):
+    def arrayMinMax(self,a):
+        if self._subdomain is not None:
+            idx=self._subdomain
+            if self._minmaxglobal:
+                a=a[:,idx[0]:idx[1]+1,idx[2]:idx[3]+1]
+            else:
+                a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
         return (a[a==a].min(),a[a==a].max())
 
     def getUnits(self):
@@ -1152,13 +1157,12 @@ class Vector2Raster(FireNetcdf2Raster):
         '''
         raise Exception("Unsupported function for class Vector2Raster")
 
-    @classmethod
-    def arrayMinMax(cls,a):
+    def arrayMinMax(self,a):
         '''
         Return min/max of vector data (using cartesian norm).
         '''
         d=(a[0]**2+a[1]**2)**.5
-        return FireNetcdf2Raster.arrayMinMax(d)
+        return super(Vector2Raster,self).arrayMinMax(d)
 
     @classmethod
     def reduceVector(cls,ax,np):
