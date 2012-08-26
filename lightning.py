@@ -189,7 +189,7 @@ Creates lightning.kmz from the contents of wrfout.
     snow=ZeroMaskedRaster(f,f.variables['SNOWH'],name='SNOWH',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
 
-    wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='Wind',usebarbs=True,barbslength=3,
+    wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='Wind',usebarbs=True,barbslength=5,
                        barbswidth=.5,displayDescription='Wind',subdomain=subdomain)
     winds=WindSpeedRaster(f,f.variables['U'],name='Wind Speed',subdomain=subdomain,interp='sinc')
     slvp=SeaPressureRaster(f,f.variables['P'],name='Sea Level Pressure',subdomain=subdomain,interp='sinc')
