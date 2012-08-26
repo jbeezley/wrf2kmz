@@ -211,15 +211,22 @@ def globalReprojectIdx(tag,lon,lat):
             idx=idx
 
         # store result in global dictionary
-        _globalReprojectionIdx[tag]=idx
-    return _globalReprojectionIdx[tag]
+        _globalReprojectionIdx[tag]=(idx,xi,yi)
+    return _globalReprojectionIdx[tag][0]
+
+def getReprojectionGeoref(tag):
+    if _globalReprojectionIdx.has_key(tag):
+        ix,iy=_globalReprojectionIdx[tag][1:]
+        return ix,iy
+    else:
+        return (None,None)
 
 def reprojectArrayFromTag(tag,a):
     '''
     Interpolate the array 'a' from the globally stored index.
     '''
     global _globalReprojectionIdx
-    idx=_globalReprojectionIdx[tag]
+    idx=_globalReprojectionIdx[tag][0]
     assert idx is not None
     return reproject.interparray(idx,a.T,np.nan).T
 
@@ -379,7 +386,7 @@ class BaseNetCDF2Raster(object):
         
         self._subdomain=None
         if subdomain is not None:
-            lon,lat=self.readCoordinates(istep=0,idx=None)
+            lon,lat=self.readCoordinates(istep=0,idx=None,orig=True)
             lonc=subdomain['centerlon']
             latc=subdomain['centerlat']
             iy,ix=self._findPointIndex(lonc,latc,lon,lat)
@@ -468,7 +475,7 @@ class BaseNetCDF2Raster(object):
     def _getGCPs(self,istep=None,idx=None):
         if not have_reproject:
             return None
-        lon,lat=self.readCoordinates(istep,idx)
+        lon,lat=self.readCoordinates(istep,idx,orig=True)
         ny,nx=lon.shape
         ny=ny-1
         nx=nx-1
@@ -603,7 +610,7 @@ class BaseNetCDF2Raster(object):
 
         return a
 
-    def readCoordinates(self,istep=0,idx=None):
+    def readCoordinates(self,istep=0,idx=None,orig=True):
         '''
         Read coordinate arrays (as lon/lat) for this variable.  The class assumes
         that the coordinate arrays have the same shape as the variable array.
@@ -617,22 +624,31 @@ class BaseNetCDF2Raster(object):
         c=self.getCoordinates()
         if c is None:
             raise Exception("Could not find coordinate array for %s" % self.getName())
-
-        # read coordinate arrays from the file
-        lon=self._file.variables[c[0]]
-        lat=self._file.variables[c[1]]
-
-        # if no index bounds given, then return the full arrays
-        if idx is None:
-            idx=(0,lon.shape[-2]-1,0,lon.shape[-1]-1)
         
-        # restrict coordinate arrays from index bounds
-        if istep is None:
-            lon=lon[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
-            lat=lat[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
+        ix,iy=getReprojectionGeoref(self._getTag())
+        if ix is not None and iy is not None and not orig:
+            if idx is None:
+                lon=ix
+                lat=iy
+            else:
+                lon=ix[idx[2]:idx[3]+1]
+                lat=iy[idx[0]:idx[1]+1]
         else:
-            lon=lon[istep,idx[0]:idx[1]+1,idx[2]:idx[3]+1].squeeze()
-            lat=lat[istep,idx[0]:idx[1]+1,idx[2]:idx[3]+1].squeeze()
+            # read coordinate arrays from the file
+            lon=self._file.variables[c[0]]
+            lat=self._file.variables[c[1]]
+    
+            # if no index bounds given, then return the full arrays
+            if idx is None:
+                idx=(0,lon.shape[-2]-1,0,lon.shape[-1]-1)
+            
+            # restrict coordinate arrays from index bounds
+            if istep is None:
+                lon=lon[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
+                lat=lat[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
+            else:
+                lon=lon[istep,idx[0]:idx[1]+1,idx[2]:idx[3]+1].squeeze()
+                lat=lat[istep,idx[0]:idx[1]+1,idx[2]:idx[3]+1].squeeze()
         return (lon,lat)
             
     def _getRestriction(self,a):
@@ -745,7 +761,7 @@ class BaseNetCDF2Raster(object):
             idx=self._getRestriction(a)
         else:
             idx=None
-        lon,lat=self.readCoordinates(istep=istep,idx=idx)
+        lon,lat=self.readCoordinates(istep=istep,idx=idx,orig=False)
         return {'west':lon.min(),'east':lon.max(),'south':lat.min(),'north':lat.max()}
    
     def getTimeDim(self):
@@ -816,7 +832,7 @@ class BaseNetCDF2Raster(object):
             hsize:  integer, width of the image in inches
         '''
 
-        lon,lat=self.readCoordinates(istep)
+        lon,lat=self.readCoordinates(istep,orig=True)
         a=reprojectArray(self._getTag(),lon,lat,a)
         a=self.applyMask(a)
         if (a!=a).all():
@@ -929,7 +945,7 @@ class BaseNetCDF2Raster(object):
         assert len(a.shape) == 2
 
         # get coordinates of the array
-        lon,lat=self.readCoordinates(istep)
+        lon,lat=self.readCoordinates(istep,orig=True)
 
         # get vertices of the polygon
         c=pylab.contour(lon,lat,a,[contour]).collections[0]
@@ -1013,7 +1029,7 @@ class FireNetcdf2Raster(WRFNetcdf2Raster):
         else:
             return a
 
-    def readCoordinates(self,istep=0,idx=None):
+    def readCoordinates(self,istep=0,idx=None,orig=False):
         '''
         Same as base class readCoordinates, but ignores the extra space that is present
         for fire grid variables.
@@ -1021,7 +1037,7 @@ class FireNetcdf2Raster(WRFNetcdf2Raster):
         if idx is None and self._isfiregridvar(self._var):
             c=self._var.shape
             idx=(0,c[1]-self.sry-1,0,c[2]-self.srx-1)
-        return WRFNetcdf2Raster.readCoordinates(self,istep,idx)
+        return WRFNetcdf2Raster.readCoordinates(self,istep,idx,orig)
 
     def getCoordinates(self):
         '''
@@ -1137,12 +1153,6 @@ class Vector2Raster(FireNetcdf2Raster):
         d=(a[0]**2+a[1]**2)**.5
         return FireNetcdf2Raster.arrayMinMax(d)
 
-    def reprojectArray(self,a,istep=None,idx=None):
-        # maybe support in the future, but due to how vector data is displayed, 
-        # the exacted georeferencing is less important.  First I should work on
-        # improving where the arrow bases are located via reduceVector.
-        print >> sys.stderr , 'WARNING: Reprojecting of vector data not yet supported.'
-
     @classmethod
     def reduceVector(cls,ax,np):
         '''
@@ -1159,6 +1169,9 @@ class Vector2Raster(FireNetcdf2Raster):
         '''
         Similar to superclass method, but generates a quiver plot.
         '''
+        lon,lat=self.readCoordinates(istep,orig=True)
+        a=(reprojectArray(self._getTag(),lon,lat,a[0]),
+           reprojectArray(self._getTag(),lon,lat,a[1]))
         if self._subdomain:
             idx=self._subdomain
             a=(a[0][idx[0]:idx[1]+1,idx[2]:idx[3]+1],
@@ -1190,7 +1203,7 @@ class Vector2Raster(FireNetcdf2Raster):
         '''
         Georeferencing without support of restricted arrays.
         '''
-        lon,lat=self.readCoordinates(istep=istep,idx=self._subdomain)
+        lon,lat=self.readCoordinates(istep=istep,idx=self._subdomain,orig=False)
         return {'west':lon.min(),'east':lon.max(),'south':lat.min(),'north':lat.max()}
 
     def getCoordinates(self):
