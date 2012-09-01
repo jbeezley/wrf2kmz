@@ -1,4 +1,7 @@
 
+windspeedunits='knots'
+#windspeedunits='mph'
+
 import sys
 from netCDF4 import Dataset
 from wrf2kmz import *
@@ -7,9 +10,14 @@ from relhum import relative_humidity
 
 from matplotlib import colors,cm
 
+
+mphpersi=2.23694     # number of miles per hour in meters per second
+knotspersi=1.94384   # number of knots in meters per second
+
 #clist=['white','#CCFF00','#66FF00',]
 bounds=[0,1,5,10,25,50,100,250,500,1000]
-mbound=[0,1,2, 3, 4, 5,  6,  7,  8,9,10]
+mbound=[0,1,2, 3, 4, 5,  6,  7,  8,   9,  10]
+cbound=[0,1,2, 3, 5, 7, 10, 25, 50,  75, 100]
 
 basecmap=cm.jet
 clist=[]
@@ -29,6 +37,14 @@ for i in np.linspace(0,basecmap.N,N):
 mmap=colors.ListedColormap(mlist)
 mnorm=colors.BoundaryNorm(mbound,mmap.N)
 mbarargs={'boundaries':mbound,'ticks':mbound,'spacing':'uniform'}
+
+cclist=[]
+N=len(cbound)-1
+for i in np.linspace(0,basecmap.N,N):
+    cclist.append(basecmap(float(i)/basecmap.N)[:-1])
+ccmap=colors.ListedColormap(cclist)
+cnorm=colors.BoundaryNorm(cbound,cmap.N)
+ccbarargs={'boundaries':cbound,'ticks':cbound,'spacing':'uniform'}
 
 class LightningRaster(ZeroMaskedRaster):
     pass
@@ -63,9 +79,10 @@ class TotLightningRaster(LightningRaster):
         return 'Total Ground Lightning Density'
 
 class WindSpeedRaster(ZeroMaskedRaster):
-    def __init__(self,*args,**kwargs):
+    def __init__(self,units='',*args,**kwargs):
         kwargs['derivedVar']=True
         super(WindSpeedRaster,self).__init__(*args,**kwargs)
+        self._units=units
 
     def _readVarRaw(self,varname,istep,*args,**kwargs):
         if istep == None:
@@ -75,10 +92,24 @@ class WindSpeedRaster(ZeroMaskedRaster):
         b=self._file.variables['V'][istep,0,...].squeeze()
         b=.5*(b[1:,:]+b[:-1,:])
         a=(a**2.+b**2.)**.5
+
+        if self._units == 'mph':
+            a=a*mphpersi
+        elif self._units == 'knots':
+            a=a*knotspersi
+        else:
+            print 'unknown unit string "%s", defaulting to meters/second' % self._units
+
         return a.squeeze()
 
     def getDescription(self):
         return 'Wind Speed'
+
+    def getUnits(self):
+        if not self._units:
+            return super(WindSpeedRaster,self).getUnits()
+        else:
+            return self._units
 
 class SeaPressureRaster(ZeroMaskedRaster):
     def __init__(self,*args,**kwargs):
@@ -176,10 +207,15 @@ Creates lightning.kmz from the contents of wrfout.
                 'norm':mnorm,
                 'colorbarargs':mbarargs,
                 'interp':'sinc'}
+    ccommonargs={'subdomain':subdomain,
+                'cmap':ccmap,
+                'norm':cnorm,
+                'colorbarargs':ccbarargs,
+                'interp':'sinc'}
 
     f=Dataset(file,'r')
     lpos=LightningRaster(f,f.variables['LPOS'],name='+GC',accum=True,accumsumhours=3,**mcommonargs)
-    lneg=LightningRaster(f,f.variables['LNEG'],name='-GC',accum=True,accumsumhours=3,**commonargs)
+    lneg=LightningRaster(f,f.variables['LNEG'],name='-GC',accum=True,accumsumhours=3,**ccommonargs)
     lneu=LightningRaster(f,f.variables['LNEU'],name='IC',accum=True,accumsumhours=None,**commonargs)
     lgc=GCLightningRaster(f,f.variables['LPOS'],name='GC',accum=True,accumsumhours=3,**commonargs)
     ltot=TotLightningRaster(f,f.variables['LPOS'],name='Total',accum=True,accumsumhours=3,**commonargs)
@@ -191,7 +227,7 @@ Creates lightning.kmz from the contents of wrfout.
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='Wind',usebarbs=True,barbslength=4,
                        barbswidth=.5,displayDescription='Wind',subdomain=subdomain,displayAlpha=255)
-    winds=WindSpeedRaster(f,f.variables['U'],name='Wind Speed',subdomain=subdomain,interp='sinc')
+    winds=WindSpeedRaster(windspeedunits,f,f.variables['U'],name='Wind Speed',subdomain=subdomain,interp='sinc')
     slvp=SeaPressureRaster(f,f.variables['P'],name='Sea Level Pressure',subdomain=subdomain,interp='sinc')
     relhum=RelHumRaster(f,f.variables['Q2'],name='Relative Humidity',subdomain=subdomain,interp='sinc')
 
