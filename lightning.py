@@ -216,7 +216,7 @@ Creates lightning.kmz from the contents of wrfout.
     f=Dataset(file,'r')
     lpos=LightningRaster(f,f.variables['LPOS'],name='+GC',accum=True,accumsumhours=3,**mcommonargs)
     lneg=LightningRaster(f,f.variables['LNEG'],name='-GC',accum=True,accumsumhours=3,**ccommonargs)
-    lneu=LightningRaster(f,f.variables['LNEU'],name='IC',accum=True,accumsumhours=None,**commonargs)
+    lneu=LightningRaster(f,f.variables['LNEU'],name='IC',accum=True,accumsumhours=3,**commonargs)
     lgc=GCLightningRaster(f,f.variables['LPOS'],name='GC',accum=True,accumsumhours=3,**commonargs)
     ltot=TotLightningRaster(f,f.variables['LPOS'],name='Total',accum=True,accumsumhours=3,**commonargs)
     
