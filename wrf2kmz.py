@@ -725,7 +725,11 @@ class BaseNetCDF2Raster(object):
                 a=a[:,idx[0]:idx[1]+1,idx[2]:idx[3]+1]
             else:
                 a=a[idx[0]:idx[1]+1,idx[2]:idx[3]+1]
-        return (a[a==a].min(),a[a==a].max())
+        try:
+            min,max=(a[a==a].min(),a[a==a].max())
+        except ValueError:
+            raise MaskedArrayException
+        return min,max
 
     def getUnits(self):
         '''
