@@ -61,7 +61,7 @@ class GCLightningRaster(LightningRaster):
         return a.squeeze()
 
     def getDescription(self):
-        return 'GC'
+        return 'Total Ground Lightning Density'
 
 class TotLightningRaster(LightningRaster):
     def __init__(self,*args,**kwargs):
@@ -76,7 +76,7 @@ class TotLightningRaster(LightningRaster):
         return a.squeeze()
 
     def getDescription(self):
-        return 'Total Ground Lightning Density'
+        return 'Total Lightning Density'
 
 class WindSpeedRaster(ZeroMaskedRaster):
     def __init__(self,units='',*args,**kwargs):
