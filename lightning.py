@@ -13,6 +13,7 @@ from matplotlib import colors,cm
 
 mphpersi=2.23694     # number of miles per hour in meters per second
 knotspersi=1.94384   # number of knots in meters per second
+inchespersi=39.3701  # number of inches in a meter
 
 #clist=['white','#CCFF00','#66FF00',]
 bounds=[0,1,5,10,25,50,100,250,500,1000]
@@ -144,6 +145,25 @@ class RelHumRaster(ZeroMaskedRaster):
         psfc=self._file.variables['PSFC'][istep,...]
         return relative_humidity(t2,q2,psfc)
 
+class DepthUnitRaster(ZeroMaskedRaster):
+
+    def __init__(self,units='',*args,**kwargs):
+        kwargs['derivedVar']=True
+        super(DepthUnitRaster,self).__init__(*args,**kwargs)
+        self._units=units
+
+    def _readVarRaw(self,varname,istep,**kwargs):
+        super(DepthUnitRaster,self).__init__(varname,istep,**kwargs)
+        if self._units == 'inches':
+            a=a*inchespersi
+        return a.squeeze()
+    
+    def getUnits(self):
+        if not self._units:
+            return super(DepthUnitRaster,self).getUnits()
+        else:
+            return self._units
+
 def test():
     subdomain={'centerlon':-80.874129,
                'centerlat':42.181647,
@@ -178,10 +198,38 @@ Creates lightning.kmz from the contents of wrfout.
 
     opts=tmp()
     opts.subdomain=False
+    opts.inches=False
+    opts.knots=False
+    opts.mph=False
     args=sys.argv[1:]
+    depthunits=''
+
     if '-s' in args:
         args.remove('-s')
         opts.subdomain=True
+
+    if '--inches' in args:
+        args.remove('--inches')
+        opts.inches=True
+
+    if '--knots' in args:
+        args.remove('--knots')
+        opts.knots=True
+    
+    if '--mph' in args:
+        args.remove('--mph')
+        opts.mph=True
+    
+    if opts.knots and opts.mph:
+        print 'Cannot use both --mph and --knots flags.'
+        sys.exit(1)
+
+    if opts.knots:
+        windspeedunits='knots'
+    if opts.mph:
+        windspeedunits='mph'
+    if opts.inches:
+        depthunits='inches'
 
     subdomain=None
     if opts.subdomain:
@@ -220,9 +268,9 @@ Creates lightning.kmz from the contents of wrfout.
     lgc=GCLightningRaster(f,f.variables['LPOS'],name='GC',accum=True,accumsumhours=3,**commonargs)
     ltot=TotLightningRaster(f,f.variables['LPOS'],name='Total',accum=True,accumsumhours=3,**commonargs)
     
-    rain=ZeroMaskedRaster(f,f.variables['RAINNC'],name='RAINNC',accum=True,accumsumhours=3,subdomain=subdomain,
+    rain=DepthUnitRaster(depthunits,f,f.variables['RAINNC'],name='RAINNC',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
-    snow=ZeroMaskedRaster(f,f.variables['SNOWH'],name='SNOWH',accum=True,accumsumhours=3,subdomain=subdomain,
+    snow=ZeroMaskedRaster(depthunits,f,f.variables['SNOWH'],name='SNOWH',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='Wind',usebarbs=True,barbslength=4,
