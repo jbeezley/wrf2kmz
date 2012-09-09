@@ -262,11 +262,14 @@ Creates lightning.kmz from the contents of wrfout.
                 'interp':'sinc'}
 
     f=Dataset(file,'r')
-    lpos=LightningRaster(f,f.variables['LPOS'],name='+GC',accum=True,accumsumhours=3,**mcommonargs)
-    lneg=LightningRaster(f,f.variables['LNEG'],name='-GC',accum=True,accumsumhours=3,**ccommonargs)
-    lneu=LightningRaster(f,f.variables['LNEU'],name='IC',accum=True,accumsumhours=3,**commonargs)
-    lgc=GCLightningRaster(f,f.variables['LPOS'],name='GC',accum=True,accumsumhours=3,**commonargs)
-    ltot=TotLightningRaster(f,f.variables['LPOS'],name='Total',accum=True,accumsumhours=3,**commonargs)
+    try:
+        lpos=LightningRaster(f,f.variables['LPOS'],name='+GC',accum=True,accumsumhours=3,**mcommonargs)
+        lneg=LightningRaster(f,f.variables['LNEG'],name='-GC',accum=True,accumsumhours=3,**ccommonargs)
+        lneu=LightningRaster(f,f.variables['LNEU'],name='IC',accum=True,accumsumhours=3,**commonargs)
+        lgc=GCLightningRaster(f,f.variables['LPOS'],name='GC',accum=True,accumsumhours=3,**commonargs)
+        ltot=TotLightningRaster(f,f.variables['LPOS'],name='Total',accum=True,accumsumhours=3,**commonargs)
+    except:
+        pass
     
     rain=DepthUnitRaster(depthunits,f,f.variables['RAINNC'],name='RAINNC',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
