@@ -1,7 +1,4 @@
 
-windspeedunits='knots'
-#windspeedunits='mph'
-
 import sys
 from netCDF4 import Dataset
 from wrf2kmz import *
@@ -99,7 +96,8 @@ class WindSpeedRaster(ZeroMaskedRaster):
         elif self._units == 'knots':
             a=a*knotspersi
         else:
-            print 'unknown unit string "%s", defaulting to meters/second' % self._units
+            pass
+            #print 'unknown unit string "%s", defaulting to meters/second' % self._units
 
         return a.squeeze()
 
@@ -148,16 +146,15 @@ class RelHumRaster(ZeroMaskedRaster):
 class DepthUnitRaster(ZeroMaskedRaster):
 
     def __init__(self,units='',*args,**kwargs):
-        kwargs['derivedVar']=True
         super(DepthUnitRaster,self).__init__(*args,**kwargs)
         self._units=units
-
-    def _readVarRaw(self,varname,istep,**kwargs):
-        super(DepthUnitRaster,self).__init__(varname,istep,**kwargs)
+    
+    def _readArray(self,*args,**kwargs):
+        a=super(DepthUnitRaster,self)._readArray(*args,**kwargs)
         if self._units == 'inches':
             a=a*inchespersi
         return a.squeeze()
-    
+
     def getUnits(self):
         if not self._units:
             return super(DepthUnitRaster,self).getUnits()
@@ -203,6 +200,7 @@ Creates lightning.kmz from the contents of wrfout.
     opts.mph=False
     args=sys.argv[1:]
     depthunits=''
+    windspeedunits=''
 
     if '-s' in args:
         args.remove('-s')
@@ -273,7 +271,7 @@ Creates lightning.kmz from the contents of wrfout.
     
     rain=DepthUnitRaster(depthunits,f,f.variables['RAINNC'],name='RAINNC',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
-    snow=ZeroMaskedRaster(depthunits,f,f.variables['SNOWH'],name='SNOWH',accum=True,accumsumhours=3,subdomain=subdomain,
+    snow=DepthUnitRaster(depthunits,f,f.variables['SNOWH'],name='SNOWH',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='Wind',usebarbs=True,barbslength=4,
