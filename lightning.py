@@ -233,7 +233,10 @@ Creates lightning.kmz from the contents of wrfout.
 
 
     n=ncKML()
-    n.setViewFromRaster(lpos)
+    try:
+        n.setViewFromRaster(slvp)
+    except:
+        print 'Could not set initial view from sea level pressure'
     n.groundOverlayFromRaster(lpos)
     n.groundOverlayFromRaster(lneg)
     n.groundOverlayFromRaster(lneu)
