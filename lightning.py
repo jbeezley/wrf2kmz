@@ -161,6 +161,27 @@ class DepthUnitRaster(ZeroMaskedRaster):
         else:
             return self._units
 
+
+class TemperatureUnitRaster(ZeroMaskedRaster):
+
+    def __init__(self,units='',*args,**kwargs):
+        super(TemperatureUnitRaster,self).__init__(*args,**kwargs)
+        self._units=units
+    
+    def _readArray(self,*args,**kwargs):
+        a=super(TemperatureUnitRaster,self)._readArray(*args,**kwargs)
+        if self._units == 'celcius':
+            a=a-273.15
+        elif self._units == 'farenheit':
+            a=(9./5.)*(a+32.-273.15)
+        return a.squeeze()
+
+    def getUnits(self):
+        if not self._units:
+            return super(TemperatureUnitRaster,self).getUnits()
+        else:
+            return self._units
+
 def test():
     subdomain={'centerlon':-80.874129,
                'centerlat':42.181647,
@@ -198,9 +219,12 @@ Creates lightning.kmz from the contents of wrfout.
     opts.inches=False
     opts.knots=False
     opts.mph=False
+    opts.far=False
+    opts.celcius=False
     args=sys.argv[1:]
     depthunits=''
     windspeedunits=''
+    tempunits=''
 
     if '-s' in args:
         args.remove('-s')
@@ -218,8 +242,19 @@ Creates lightning.kmz from the contents of wrfout.
         args.remove('--mph')
         opts.mph=True
     
+    if '--farenheit' in args:
+        args.remove('--farenheit')
+        opts.far=True
+    
+    if '--celcius' in args:
+        args.remove('--celcius')
+        opts.celcius=True
+
     if opts.knots and opts.mph:
         print 'Cannot use both --mph and --knots flags.'
+        sys.exit(1)
+    if opts.celcius and opts.far:
+        print 'Cannot use both --celcius and --farenheit flags.'
         sys.exit(1)
 
     if opts.knots:
@@ -228,6 +263,10 @@ Creates lightning.kmz from the contents of wrfout.
         windspeedunits='mph'
     if opts.inches:
         depthunits='inches'
+    if opts.far:
+        tempunits='farenheit'
+    if opts.celcius:
+        tempunits='celcius'
 
     subdomain=None
     if opts.subdomain:
@@ -258,8 +297,12 @@ Creates lightning.kmz from the contents of wrfout.
                 'norm':cnorm,
                 'colorbarargs':ccbarargs,
                 'interp':'sinc'}
+    try:
+        f=Dataset(file,'r')
+    except Exception:
+        print 'Cannot open wrf file %s' % file
+        sys.exit(1)
 
-    f=Dataset(file,'r')
     try:
         lpos=LightningRaster(f,f.variables['LPOS'],name='+GC',accum=True,accumsumhours=3,**mcommonargs)
         lneg=LightningRaster(f,f.variables['LNEG'],name='-GC',accum=True,accumsumhours=3,**ccommonargs)
@@ -279,6 +322,7 @@ Creates lightning.kmz from the contents of wrfout.
     winds=WindSpeedRaster(windspeedunits,f,f.variables['U'],name='Wind Speed',subdomain=subdomain,interp='sinc')
     slvp=SeaPressureRaster(f,f.variables['P'],name='Sea Level Pressure',subdomain=subdomain,interp='sinc')
     relhum=RelHumRaster(f,f.variables['Q2'],name='Relative Humidity',subdomain=subdomain,interp='sinc')
+    t2=TemperatureUnitRaster(tempunits,f,f.variables['T2'],name='Temperature',subdomain=subdomain,interp='sinc')
 
 
     n=ncKML()
@@ -300,6 +344,7 @@ Creates lightning.kmz from the contents of wrfout.
     n.groundOverlayFromRaster(winds)
     n.groundOverlayFromRaster(slvp)
     n.groundOverlayFromRaster(relhum)
+    n.groundOverlayFromRaster(t2)
     n.savekmz('lightning.kmz')
 
 if __name__ == '__main__':
