@@ -172,7 +172,7 @@ class TemperatureUnitRaster(ZeroMaskedRaster):
         a=super(TemperatureUnitRaster,self)._readArray(*args,**kwargs)
         if self._units == 'celcius':
             a=a-273.15
-        elif self._units == 'farenheit':
+        elif self._units == 'fahrenheit':
             a=(9./5.)*(a+32.-273.15)
         return a.squeeze()
 
@@ -242,8 +242,8 @@ Creates lightning.kmz from the contents of wrfout.
         args.remove('--mph')
         opts.mph=True
     
-    if '--farenheit' in args:
-        args.remove('--farenheit')
+    if '--fahrenheit' in args:
+        args.remove('--fahrenheit')
         opts.far=True
     
     if '--celcius' in args:
@@ -254,7 +254,7 @@ Creates lightning.kmz from the contents of wrfout.
         print 'Cannot use both --mph and --knots flags.'
         sys.exit(1)
     if opts.celcius and opts.far:
-        print 'Cannot use both --celcius and --farenheit flags.'
+        print 'Cannot use both --celcius and --fahrenheit flags.'
         sys.exit(1)
 
     if opts.knots:
@@ -264,7 +264,7 @@ Creates lightning.kmz from the contents of wrfout.
     if opts.inches:
         depthunits='inches'
     if opts.far:
-        tempunits='farenheit'
+        tempunits='fahrenheit'
     if opts.celcius:
         tempunits='celcius'
 
