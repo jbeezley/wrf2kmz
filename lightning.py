@@ -152,7 +152,7 @@ class DepthUnitRaster(ZeroMaskedRaster):
     def _readArray(self,*args,**kwargs):
         a=super(DepthUnitRaster,self)._readArray(*args,**kwargs)
         if self._units == 'inches':
-            a=a*inchespersi
+            a=a*1000.*inchespersi
         return a.squeeze()
 
     def getUnits(self):
