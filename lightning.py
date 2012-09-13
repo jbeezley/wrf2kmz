@@ -170,7 +170,7 @@ class TemperatureUnitRaster(ZeroMaskedRaster):
     
     def _readArray(self,*args,**kwargs):
         a=super(TemperatureUnitRaster,self)._readArray(*args,**kwargs)
-        if self._units == 'celcius':
+        if self._units == 'celsius':
             a=a-273.15
         elif self._units == 'fahrenheit':
             a=(9./5.)*(a+32.-273.15)
@@ -220,7 +220,7 @@ Creates lightning.kmz from the contents of wrfout.
     opts.knots=False
     opts.mph=False
     opts.far=False
-    opts.celcius=False
+    opts.celsius=False
     args=sys.argv[1:]
     depthunits=''
     windspeedunits=''
@@ -246,15 +246,15 @@ Creates lightning.kmz from the contents of wrfout.
         args.remove('--fahrenheit')
         opts.far=True
     
-    if '--celcius' in args:
-        args.remove('--celcius')
-        opts.celcius=True
+    if '--celsius' in args:
+        args.remove('--celsius')
+        opts.celsius=True
 
     if opts.knots and opts.mph:
         print 'Cannot use both --mph and --knots flags.'
         sys.exit(1)
-    if opts.celcius and opts.far:
-        print 'Cannot use both --celcius and --fahrenheit flags.'
+    if opts.celsius and opts.far:
+        print 'Cannot use both --celsius and --fahrenheit flags.'
         sys.exit(1)
 
     if opts.knots:
@@ -265,8 +265,8 @@ Creates lightning.kmz from the contents of wrfout.
         depthunits='inches'
     if opts.far:
         tempunits='fahrenheit'
-    if opts.celcius:
-        tempunits='celcius'
+    if opts.celsius:
+        tempunits='celsius'
 
     subdomain=None
     if opts.subdomain:
