@@ -1176,8 +1176,8 @@ class Vector2Raster(FireNetcdf2Raster):
         '''
         nx=max(1,ax.shape[1]/np[0])
         ny=max(1,ax.shape[0]/np[1])
-        sx=(ax.shape[1]-nx*np[0])/2
-        sy=(ax.shape[0]-ny*np[1])/2
+        sx=max(1,(ax.shape[1]-nx*np[0])/2)
+        sy=max(1,(ax.shape[0]-ny*np[1])/2)
         return ax[sy:-sy:ny,sx:-sx:nx]
 
     def getRasterFromArray(self,a,istep=None,hsize=3,dpi=300):
