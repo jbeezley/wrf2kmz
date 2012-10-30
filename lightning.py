@@ -145,12 +145,15 @@ class RelHumRaster(ZeroMaskedRaster):
 
 class DepthUnitRaster(ZeroMaskedRaster):
 
-    def __init__(self,units='',*args,**kwargs):
+    def __init__(self,units='',unitconv=None,*args,**kwargs):
         super(DepthUnitRaster,self).__init__(*args,**kwargs)
         self._units=units
+        self._unitconv=unitconv
     
     def _readArray(self,*args,**kwargs):
         a=super(DepthUnitRaster,self)._readArray(*args,**kwargs)
+        if self.unitconv:
+            a=a*self.unitconv
         if self._units == 'inches':
             a=a*(inchespersi/1000.)
         return a.squeeze()
@@ -314,8 +317,8 @@ Creates lightning.kmz from the contents of wrfout.
     
     rain=DepthUnitRaster(depthunits,f,f.variables['RAINNC'],name='RAINNC',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
-    snow=DepthUnitRaster(depthunits,f,f.variables['SNOWNC'],name='SNOWNC',accum=True,accumsumhours=3,subdomain=subdomain,
-                          interp='sinc')
+    snow=DepthUnitRaster(depthunits,f,f.variables['SNOWH'],name='SNOWH',accum=True,accumsumhours=3,subdomain=subdomain,
+                          interp='sinc',unitconv=1./1000.)
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='Wind',usebarbs=True,barbslength=4,
                        barbswidth=.5,displayDescription='Wind',subdomain=subdomain,displayAlpha=255)
