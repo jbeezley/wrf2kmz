@@ -152,7 +152,7 @@ class DepthUnitRaster(ZeroMaskedRaster):
     def _readArray(self,*args,**kwargs):
         a=super(DepthUnitRaster,self)._readArray(*args,**kwargs)
         if self._units == 'inches':
-            a=a*1000.*inchespersi
+            a=a*(inchespersi/1000.)
         return a.squeeze()
 
     def getUnits(self):
@@ -314,7 +314,7 @@ Creates lightning.kmz from the contents of wrfout.
     
     rain=DepthUnitRaster(depthunits,f,f.variables['RAINNC'],name='RAINNC',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
-    snow=DepthUnitRaster(depthunits,f,f.variables['SNOWH'],name='SNOWH',accum=True,accumsumhours=3,subdomain=subdomain,
+    snow=DepthUnitRaster(depthunits,f,f.variables['SNOWNC'],name='SNOWNC',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='Wind',usebarbs=True,barbslength=4,
