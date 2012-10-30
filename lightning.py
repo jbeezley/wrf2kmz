@@ -315,10 +315,10 @@ Creates lightning.kmz from the contents of wrfout.
     except:
         pass
     
-    rain=DepthUnitRaster(depthunits,f,f.variables['RAINNC'],name='RAINNC',accum=True,accumsumhours=3,subdomain=subdomain,
+    rain=DepthUnitRaster(depthunits,None,f,f.variables['RAINNC'],name='RAINNC',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
-    snow=DepthUnitRaster(depthunits,f,f.variables['SNOWH'],name='SNOWH',accum=True,accumsumhours=3,subdomain=subdomain,
-                          interp='sinc',unitconv=1./1000.)
+    snow=DepthUnitRaster(depthunits,1./1000.,f,f.variables['SNOWH'],name='SNOWH',accum=True,accumsumhours=3,subdomain=subdomain,
+                          interp='sinc')
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='Wind',usebarbs=True,barbslength=4,
                        barbswidth=.5,displayDescription='Wind',subdomain=subdomain,displayAlpha=255)
