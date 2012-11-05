@@ -145,15 +145,12 @@ class RelHumRaster(ZeroMaskedRaster):
 
 class DepthUnitRaster(ZeroMaskedRaster):
 
-    def __init__(self,units='',unitconv=None,*args,**kwargs):
+    def __init__(self,units='',*args,**kwargs):
         super(DepthUnitRaster,self).__init__(*args,**kwargs)
         self._units=units
-        self._unitconv=unitconv
     
     def _readArray(self,*args,**kwargs):
         a=super(DepthUnitRaster,self)._readArray(*args,**kwargs)
-        if self._unitconv:
-            a=a*self._unitconv
         if self._units == 'inches':
             a=a*(inchespersi/1000.)
         return a.squeeze()
@@ -164,6 +161,26 @@ class DepthUnitRaster(ZeroMaskedRaster):
         else:
             return self._units
 
+
+class SnowRaster(ZeroMaskedRaster):
+
+    def __init__(self,units='',*args,**kwargs):
+        super(SnowRaster,self).__init__(*args,**kwargs)
+        self._units=units
+    
+    def _readArray(self,*args,**kwargs):
+        a=super(SnowRaster,self)._readArray(*args,**kwargs)
+        if self._units == 'inches':
+            a=a*(inchespersi)
+        else:
+            a=a*100
+        return a.squeeze()
+
+    def getUnits(self):
+        if not self._units:
+            return 'cm' #super(DepthUnitRaster,self).getUnits()
+        else:
+            return self._units
 
 class TemperatureUnitRaster(ZeroMaskedRaster):
 
@@ -315,9 +332,9 @@ Creates lightning.kmz from the contents of wrfout.
     except:
         pass
     
-    rain=DepthUnitRaster(depthunits,None,f,f.variables['RAINNC'],name='RAINNC',accum=True,accumsumhours=3,subdomain=subdomain,
+    rain=DepthUnitRaster(depthunits,f,f.variables['RAINNC'],name='RAINNC',accum=True,accumsumhours=3,subdomain=subdomain,
                           interp='sinc')
-    snow=DepthUnitRaster(depthunits,1./1000.,f,f.variables['SNOWH'],name='SNOWH',accum=True,accumsumhours=3,subdomain=subdomain,
+    snow=SnowRaster(depthunits,f,f.variables['SNOWH'],name='SNOWH',subdomain=subdomain,
                           interp='sinc')
 
     wind=Vector2Raster(f,f.variables['U'],f.variables['V'],name='Wind',usebarbs=True,barbslength=4,
