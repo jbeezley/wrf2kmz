@@ -531,7 +531,10 @@ class BaseNetCDF2Raster(object):
                 i=i-1
             #print 'reading steps %i to %i' % (istart,iend-1)
             for i in xrange(istart,iend):
-                a=a+self._readArray(istep=i,skipaccumsum=True)
+                b=self._readArray(istep=i,skipaccumsum=True)
+                b[b != b] = 0.
+                a=a+b
+            a=self.applyMask(a)
         return a
     
     def _privRead(self,var,istep,ilev):
@@ -716,6 +719,7 @@ class BaseNetCDF2Raster(object):
             a=self._readArray(istep)
             self._minmax=self.arrayMinMax(a)
             minmax=self._minmax
+        #print minmax
         return minmax
     
     def arrayMinMax(self,a):
