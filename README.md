@@ -34,3 +34,5 @@ are two methods for reprojection.  The first is a custom fortran module
 that requires a working installation of f2py.  The second is used if
 the fortran module cannot be compiled.  It uses a call to matplotlib's
 griddate function and is significantly slower on large domains.
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/jbeezley/wrf2kmz/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
