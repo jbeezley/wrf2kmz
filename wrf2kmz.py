@@ -1631,6 +1631,10 @@ class ncKML(Kml):
         if linestyle is None:
             linestyle=LineStyle(color=Color.rgb(255,0,0,255),width=3)
 
+        style = Style()
+        style.polystyle = polystyle
+        style.linestyle = linestyle
+
         for i in isteps:
             if raster.static:
                 tref=raster.timereference()
@@ -1648,8 +1652,7 @@ class ncKML(Kml):
                 # add new polygon element to the kml class object
                 p=f.newpolygon(name='%s_%05i_%05i' % (raster.getName()+'_contour',i,j))
                 p.outerboundaryis=pl
-                p.polystyle=polystyle
-                p.linestyle=linestyle
+                p.style = style
                 p.tessellate=1
                 p.timespan=TimeSpan()
                 p.timespan.begin=tref['start'].isoformat()
